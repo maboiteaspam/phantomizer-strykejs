@@ -1,6 +1,5 @@
 'use strict';
 
-var pahntomizer_webapp = null
 module.exports = function(grunt) {
 
     grunt.registerMultiTask("phantomizer-strykejs-builder", "Builds html dependencies of a stryke file", function () {
@@ -42,74 +41,71 @@ module.exports = function(grunt) {
             var target_url = "http://localhost:"+port+in_request;
 
 
-            var app = pahntomizer_webapp;
-            if( app == null ){
-                app = connect()
-                app.use(connect.query())
-                app.use(connect.urlencoded())
-                if( options.log == true ){
-                    app.use(connect.logger('dev'))
+            var app = connect()
+            app.use(connect.query())
+            app.use(connect.urlencoded())
+            if( options.log == true ){
+                app.use(connect.logger('dev'))
+            }
+            app.use(function(req, res, next){
+                var request_path = req.originalUrl
+                if( request_path.indexOf("?")>-1){
+                    request_path = request_path.substring(0,request_path.indexOf("?"))
                 }
-                app.use(function(req, res, next){
-                    var request_path = req.originalUrl
-                    if( request_path.indexOf("?")>-1){
-                        request_path = request_path.substring(0,request_path.indexOf("?"))
-                    }
 
-                    var file = file_utils.find_file(paths,request_path)
-                    if( file != null ){
-                        req_logs[request_path] = file
+                var file = file_utils.find_file(paths,request_path)
+                if( file != null ){
+                    req_logs[request_path] = file
 
-                        var headers = {
-                            'Content-Type': http_utils.header_content_type(file)
-                        };
-                        var buf = null
-                        if( headers["Content-Type"].indexOf("text/") > -1 ){
-                            buf = fs.readFileSync(file).toString()
-                            if( in_request == request_path ){
-                                buf = inject_assets(options, request_path, buf);
-                                buf = add_stryke(buf);
-                            }
-                        }else{
-                            buf = fs.readFileSync(file)
+                    var headers = {
+                        'Content-Type': http_utils.header_content_type(file)
+                    };
+                    var buf = null
+                    if( headers["Content-Type"].indexOf("text/") > -1 ){
+                        buf = fs.readFileSync(file).toString()
+                        if( in_request == request_path ){
+                            buf = inject_assets(options, request_path, buf);
+                            buf = add_stryke(buf);
                         }
-                        res.writeHead(200, headers)
-                        res.end(buf)
                     }else{
-                        next()
+                        buf = fs.readFileSync(file)
                     }
-                })
-                app.use(function(req, res, next){
-                    var request_path = req.originalUrl;
-                    if( request_path.indexOf("?")>-1){
-                        request_path = request_path.substring(0,request_path.indexOf("?"))
+                    res.writeHead(200, headers)
+                    res.end(buf)
+                }else{
+                    next()
+                }
+            })
+            app.use(function(req, res, next){
+                var request_path = req.originalUrl;
+                if( request_path.indexOf("?")>-1){
+                    request_path = request_path.substring(0,request_path.indexOf("?"))
+                }
+                var file = file_utils.find_dir(paths,request_path)
+                if( file != null ){
+                    var items = http_utils.merged_dirs(paths, request_path)
+                    var buf = ""
+                    for(var i in items) {
+                        buf += "<a href='"+items[i].path+"'>"+items[i].name+"</a><br/>"
                     }
-                    var file = file_utils.find_dir(paths,request_path)
-                    if( file != null ){
-                        var items = http_utils.merged_dirs(paths, request_path)
-                        var buf = ""
-                        for(var i in items) {
-                            buf += "<a href='"+items[i].path+"'>"+items[i].name+"</a><br/>"
-                        }
-                        var headers = {
-                            'Content-Type': 'text/html'
-                        };
-                        res.writeHead(200, headers)
-                        res.end(buf)
-                    }else{
-                        next()
-                    }
-                })
-                app.use(function(req, res){
                     var headers = {
                         'Content-Type': 'text/html'
                     };
-                    res.writeHead(404, headers)
-                    res.end("not found")
-                })
+                    res.writeHead(200, headers)
+                    res.end(buf)
+                }else{
+                    next()
+                }
+            })
+            app.use(function(req, res){
+                var headers = {
+                    'Content-Type': 'text/html'
+                };
+                res.writeHead(404, headers)
+                res.end("not found")
+            })
 
-                app.listen(port)
-            }
+            var wserver = http.createServer(app).listen(port);
 
 
             var childArgs = [
@@ -132,7 +128,7 @@ module.exports = function(grunt) {
             childProcess.execFile(phantomjs.path, childArgs, function(err, stdout, stderr) {
                 grunt.log.ok("... Done PhantomJS")
 
-                app.close();
+                wserver.close();
 
                 if( stderr != "" ){
                     finish("phantomjs error\n"+stderr)
