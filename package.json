@@ -1,0 +1,24 @@
+{
+    "name": "phantomizer-strykejs",
+    "version": "0.1.0",
+    "private": true,
+    "description": "PhantomJS build support for phantomizer",
+    "keywords": "",
+    "bugs": {
+        "url" : "http://github.com/maboiteaspam/phantomizer-strykejs/issues",
+        "email" : "none@host.com"
+    },
+    "license" : "mit",
+    "repository" :{
+        "type" : "git",
+        "url" : "http://github.com/maboiteaspam/phantomizer-strykejs.git"
+    },
+    "dependencies": {
+        "grunt": "0.4.x",
+        "phantomjs": "1.9.2-x"
+        ,"connect": "2.7.x"
+        ,"phantomizer-libutil": "maboiteaspam/phantomizer-libutil"
+    },
+    "devDependencies": {
+    }
+}
