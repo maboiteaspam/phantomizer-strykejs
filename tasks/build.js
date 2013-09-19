@@ -7,6 +7,7 @@ module.exports = function(grunt) {
         var ph_libutil = require("phantomizer-libutil")
         var fs = require("fs")
         var connect = require('connect')
+        var http = require('http')
 
         var childProcess = require('child_process')
         var phantomjs = require('phantomjs')
