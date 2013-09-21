@@ -247,7 +247,7 @@ module.exports = function(grunt) {
                     for( var target_merge in options.scripts.append ){
                         if( target_merge.length > 1 ){
                             var asset_deps = options.scripts.append[target_merge]
-                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, options.meta_dir, paths)
+                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, paths)
                             html_content = html_utils.strip_scripts(asset_deps, html_content, base_url)
                             html_content = html_utils.append_script(target_merge, html_content )
                             grunt.verbose.ok("scripts merged "+target_merge+", append")
@@ -258,7 +258,7 @@ module.exports = function(grunt) {
                     for( var target_merge in options.scripts.prepend ){
                         if( target_merge.length > 1 ){
                             var asset_deps = options.scripts.prepend[target_merge]
-                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, options.meta_dir, paths)
+                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, paths)
                             html_content = html_utils.strip_scripts(asset_deps, html_content, base_url)
                             var anchor = html_utils.script_anchor(html_content, base_url)
                             html_content = html_utils.prepend_script(target_merge, html_content, anchor)
@@ -293,7 +293,7 @@ module.exports = function(grunt) {
                     for( var target_merge in options.css.append ){
                         if( target_merge.length > 1 ){
                             var asset_deps = options.css.append[target_merge]
-                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, options.meta_dir, paths)
+                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, paths)
                             html_content = html_utils.strip_css(asset_deps, html_content, base_url)
                             html_content = html_utils.append_css(target_merge, html_content )
                             grunt.verbose.ok("css merged "+target_merge+", append")
@@ -304,7 +304,7 @@ module.exports = function(grunt) {
                     for( var target_merge in options.css.prepend ){
                         if( target_merge.length > 1 ){
                             var asset_deps = options.css.prepend[target_merge]
-                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, options.meta_dir, paths)
+                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, paths)
                             html_content = html_utils.strip_css(asset_deps, html_content, base_url)
                             var anchor = html_utils.css_anchor(html_content, base_url)
                             html_content = html_utils.prepend_css(target_merge, html_content, anchor)
@@ -320,7 +320,7 @@ module.exports = function(grunt) {
             return html_content;
         }
 
-        function merge_files(meta_manager, target_merge, deps, out_path, meta_path, paths, current_grunt_task, current_grunt_opt){
+        function merge_files(meta_manager, target_merge, deps, out_path, paths, current_grunt_task, current_grunt_opt){
 
             var entry_path = target_merge+".meta";
             var target_path = out_path+target_merge+"";
