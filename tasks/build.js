@@ -4,20 +4,21 @@ module.exports = function(grunt) {
 
     grunt.registerMultiTask("phantomizer-strykejs-builder", "Builds html dependencies of a stryke file", function () {
 
-        var ph_libutil = require("phantomizer-libutil")
-        var fs = require("fs")
-        var connect = require('connect')
-        var http = require('http')
+        var ph_libutil = require("phantomizer-libutil");
+        var fs = require("fs");
+        var connect = require('connect');
+        var http = require('http');
 
-        var childProcess = require('child_process')
-        var phantomjs = require('phantomjs')
+        var childProcess = require('child_process');
+        var phantomjs = require('phantomjs');
 
         var meta_factory = ph_libutil.meta;
         var wd = process.cwd();
 
         var http_utils = ph_libutil.http_utils;
-        var html_utils = ph_libutil.html_utils;
         var file_utils = ph_libutil.file_utils;
+        var optimizer_factory = ph_libutil.optimizer;
+        var phantomizer_helper = ph_libutil.phantomizer_helper;
 
 
         var options = this.options();
@@ -32,6 +33,7 @@ module.exports = function(grunt) {
         var current_grunt_opt = this.options();
 
         var meta_manager = new meta_factory( wd, meta_dir );
+        var optimizer = new optimizer_factory(meta_manager, options);
 
         // check if a cache entry exists, if it is fresh, just serve it
         if( meta_manager.is_fresh(meta_file) == false ){
@@ -42,7 +44,7 @@ module.exports = function(grunt) {
             var target_url = "http://localhost:"+port+in_request;
 
 
-            var app = connect()
+            var app = connect();
             app.use(connect.query())
             app.use(connect.urlencoded())
             if( options.log == true ){
@@ -54,7 +56,7 @@ module.exports = function(grunt) {
                     request_path = request_path.substring(0,request_path.indexOf("?"))
                 }
 
-                var file = file_utils.find_file(paths,request_path)
+                var file = file_utils.find_file(paths,request_path);
                 if( file != null ){
                     req_logs[request_path] = file
 
@@ -63,9 +65,17 @@ module.exports = function(grunt) {
                     };
                     var buf = null
                     if( headers["Content-Type"].indexOf("text/") > -1 ){
-                        buf = fs.readFileSync(file).toString()
+                        buf = fs.readFileSync(file).toString();
                         if( in_request == request_path ){
-                            buf = inject_assets(options, request_path, buf);
+                            var base_url = request_path.substring(0,request_path.lastIndexOf("/")) || "/";
+                            if( options.scripts ){
+                                create_combined_assets(options.scripts, paths);
+                                buf = phantomizer_helper.apply_scripts(options.scripts, base_url, buf);
+                            }
+                            if( options.css ){
+                                create_combined_assets(options.css, paths);
+                                buf = phantomizer_helper.apply_styles(options.css, base_url, buf);
+                            }
                             buf = add_stryke(buf);
                         }
                     }else{
@@ -82,18 +92,16 @@ module.exports = function(grunt) {
                 if( request_path.indexOf("?")>-1){
                     request_path = request_path.substring(0,request_path.indexOf("?"))
                 }
-                var file = file_utils.find_dir(paths,request_path)
+                var file = file_utils.find_dir(paths,request_path);
                 if( file != null ){
-                    var items = http_utils.merged_dirs(paths, request_path)
-                    var buf = ""
-                    for(var i in items) {
-                        buf += "<a href='"+items[i].path+"'>"+items[i].name+"</a><br/>"
-                    }
-                    var headers = {
-                        'Content-Type': 'text/html'
-                    };
-                    res.writeHead(200, headers)
-                    res.end(buf)
+                    var items = http_utils.merged_dirs(paths, request_path);
+                    http_utils.generate_directory_listing(items, function(err, html){
+                        var headers = {
+                            'Content-Type': 'text/html'
+                        };
+                        res.writeHead(200, headers);
+                        res.end(buf);
+                    });
                 }else{
                     next()
                 }
@@ -110,6 +118,8 @@ module.exports = function(grunt) {
 
 
             var childArgs = [
+                '--load-images=false',
+                '--load-images=false',
                 __dirname+'/../ext/phantomjs-stryke-wrapper.js',
                 target_url
             ]
@@ -136,9 +146,9 @@ module.exports = function(grunt) {
                 } else {
                     var retour = extract_html(stdout)
                     // remove stryke configuration used to prevent full execution of the page
-                    retour = remove_stryke( retour )
+                    retour = remove_stryke( retour );
                     // remove requirejs scripts, they are put in the head on runtime
-                    retour = remove_rjs_trace( retour )
+                    retour = remove_rjs_trace( retour );
                     // get traced url call from runtime, remove it from output
                     var trace = extract_stryke_trace( retour )
                     retour = remove_stryke_trace( retour )
@@ -221,135 +231,25 @@ module.exports = function(grunt) {
             return in_str
         }
 
-        function inject_assets(options, request_path, html_content){
-            // look up for scripts to strip / merge / inject
-            var base_url = request_path.substring(0,request_path.lastIndexOf("/")) || "/"
-
-            if( options.scripts ){
-                if( options.scripts.append ){
-                    for( var target_merge in options.scripts.append ){
-                        if( target_merge.length == 1 ){
-                            html_content = html_utils.append_script(target_merge, html_content )
-                            grunt.verbose.ok("script injected "+target_merge+", append")
-                        }
+        function create_combined_assets(assets_combination, source_paths){
+            if( assets_combination.append ){
+                for( var target_merge in assets_combination.append ){
+                    if( target_merge.length > 1 ){
+                        var asset_deps = assets_combination.append[target_merge]
+                        optimizer.merge_files(target_merge, asset_deps, source_paths);
+                        grunt.verbose.ok("merged "+target_merge+"")
                     }
-                }
-                if( options.scripts.prepend ){
-                    for( var target_merge in options.scripts.prepend ){
-                        if( target_merge.length == 1 ){
-                            var anchor = html_utils.script_anchor(html_content, base_url)
-                            html_content = html_utils.prepend_script(target_merge, html_content, anchor)
-                            grunt.verbose.ok("css injected "+target_merge+", prepend")
-                        }
-                    }
-                }
-                if( options.scripts.append ){
-                    for( var target_merge in options.scripts.append ){
-                        if( target_merge.length > 1 ){
-                            var asset_deps = options.scripts.append[target_merge]
-                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, paths)
-                            html_content = html_utils.strip_scripts(asset_deps, html_content, base_url)
-                            html_content = html_utils.append_script(target_merge, html_content )
-                            grunt.verbose.ok("scripts merged "+target_merge+", append")
-                        }
-                    }
-                }
-                if( options.scripts.prepend ){
-                    for( var target_merge in options.scripts.prepend ){
-                        if( target_merge.length > 1 ){
-                            var asset_deps = options.scripts.prepend[target_merge]
-                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, paths)
-                            html_content = html_utils.strip_scripts(asset_deps, html_content, base_url)
-                            var anchor = html_utils.script_anchor(html_content, base_url)
-                            html_content = html_utils.prepend_script(target_merge, html_content, anchor)
-                            grunt.verbose.ok("css merged "+target_merge+", prepend")
-                        }
-                    }
-                }
-                if( options.scripts.strip ){
-                    html_content = html_utils.strip_scripts(options.scripts.strip, html_content, base_url )
-                    grunt.verbose.ok("scripts striped")
                 }
             }
-            if( options.css ){
-                if( options.css.append ){
-                    for( var target_merge in options.css.append ){
-                        if( target_merge.length == 1 ){
-                            html_content = html_utils.append_css(target_merge, html_content )
-                            grunt.log.ok("css injected "+target_merge+", append")
-                        }
+            if( assets_combination.prepend ){
+                for( var target_merge in assets_combination.prepend ){
+                    if( target_merge.length > 1 ){
+                        var asset_deps = assets_combination.prepend[target_merge]
+                        optimizer.merge_files(target_merge, asset_deps, source_paths);
+                        grunt.verbose.ok("merged "+target_merge+"")
                     }
-                }
-                if( options.css.prepend ){
-                    for( var target_merge in options.css.prepend ){
-                        if( target_merge.length == 1 ){
-                            var anchor = html_utils.css_anchor(html_content, base_url)
-                            html_content = html_utils.prepend_css(target_merge, html_content, anchor)
-                            grunt.log.ok("css injected "+target_merge+", prepend")
-                        }
-                    }
-                }
-                if( options.css.append ){
-                    for( var target_merge in options.css.append ){
-                        if( target_merge.length > 1 ){
-                            var asset_deps = options.css.append[target_merge]
-                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, paths)
-                            html_content = html_utils.strip_css(asset_deps, html_content, base_url)
-                            html_content = html_utils.append_css(target_merge, html_content )
-                            grunt.verbose.ok("css merged "+target_merge+", append")
-                        }
-                    }
-                }
-                if( options.css.prepend ){
-                    for( var target_merge in options.css.prepend ){
-                        if( target_merge.length > 1 ){
-                            var asset_deps = options.css.prepend[target_merge]
-                            merge_files(meta_manager, target_merge, asset_deps, options.out_dir, paths)
-                            html_content = html_utils.strip_css(asset_deps, html_content, base_url)
-                            var anchor = html_utils.css_anchor(html_content, base_url)
-                            html_content = html_utils.prepend_css(target_merge, html_content, anchor)
-                            grunt.verbose.ok("css merged "+target_merge+", prepend")
-                        }
-                    }
-                }
-                if( options.css.strip ){
-                    html_content = html_utils.strip_css(options.css.strip, html_content, base_url )
-                    grunt.verbose.ok("css striped")
                 }
             }
-            return html_content;
         }
-
-        function merge_files(meta_manager, target_merge, deps, out_path, paths, current_grunt_task, current_grunt_opt){
-
-            var entry_path = target_merge+".meta";
-            var target_path = out_path+target_merge+"";
-            if(meta_manager.is_fresh(entry_path) == false ){
-                // materials required to create cache entry
-                var entry = meta_manager.create([])
-
-
-                if ( grunt.file.exists(process.cwd()+"/Gruntfile.js")) {
-                    entry.load_dependencies([process.cwd()+"/Gruntfile.js"])
-                }
-                entry.load_dependencies([target_path])
-
-                var merge_content = ""
-                for( var n in deps ){
-                    var file_dep = file_utils.find_file(paths, deps[n])
-                    if( file_dep != false ){
-                        merge_content += grunt.file.read(file_dep)
-                        entry.load_dependencies([file_dep])
-                    }
-                }
-                grunt.file.write(target_path, merge_content)
-
-                // create a cache entry, so that later we can regen or check freshness
-                entry.require_task(current_grunt_task, current_grunt_opt)
-                entry.save(entry_path)
-            }
-
-        }
-
     });
 };
