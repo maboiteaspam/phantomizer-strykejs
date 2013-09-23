@@ -235,7 +235,7 @@ module.exports = function(grunt) {
             if( assets_combination.append ){
                 for( var target_merge in assets_combination.append ){
                     if( target_merge.length > 1 ){
-                        var asset_deps = assets_combination.append[target_merge]
+                        var asset_deps = assets_combination.append[target_merge];
                         optimizer.merge_files(target_merge, asset_deps, source_paths);
                         grunt.verbose.ok("merged "+target_merge+"")
                     }
