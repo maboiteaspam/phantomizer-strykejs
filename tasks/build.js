@@ -31,8 +31,10 @@ module.exports = function(grunt) {
         var paths = options.paths;
         var meta_file = options.meta;
         var meta_dir = options.meta_dir;
+
         var current_grunt_task = this.nameArgs;
         var current_grunt_opt = this.options();
+        var user_config = grunt.config();
 
         var meta_manager = new meta_factory( wd, meta_dir );
         var optimizer = new optimizer_factory(meta_manager, options);
@@ -82,6 +84,9 @@ module.exports = function(grunt) {
                 deps.push(__filename)
                 if ( grunt.file.exists(process.cwd()+"/Gruntfile.js")) {
                     deps.push(process.cwd()+"/Gruntfile.js")
+                }
+                if ( grunt.file.exists(user_config.project_dir+"/../config.json")) {
+                    deps.push( user_config.project_dir+"/../config.json")
                 }
                 // create a cache entry, so that later we can regen or check freshness
                 var entry = meta_manager.create(deps)
