@@ -49,6 +49,7 @@ module.exports = function(grunt) {
 
             var done = this.async();
             var finish = function(res){
+                // return;
                 if( res == true ){
                     grunt.log.ok()
                     done(true);
@@ -118,28 +119,47 @@ module.exports = function(grunt) {
                 if( request_path.indexOf("?")>-1){
                     request_path = request_path.substring(0,request_path.indexOf("?"))
                 }
-                var file = file_utils.find_file(paths,request_path);
-                if( file ){
+                var headers = {
+                    'Content-Type': http_utils.header_content_type(request_path)
+                };
+                var route = router.match(request_path);
+                if( route != false && headers["Content-Type"].indexOf("text/") > -1 ){
+                    var file = file_utils.find_file(paths,route.template);
                     req_logs[request_path] = file;
-                    var headers = {
-                        'Content-Type': http_utils.header_content_type(file)
-                    };
                     var buf = fs.readFileSync(file);
                     if( headers["Content-Type"].indexOf("text/") > -1 ){
                         buf = buf.toString();
                     }
-                    var route = router.match(request_path);
-                    if( route != false && headers["Content-Type"].indexOf("text/") > -1 ){
-                        var base_url = request_path.substring(0,request_path.lastIndexOf("/")) || "/";
-                        if( options.scripts ){
-                            create_combined_assets(options.scripts, paths);
-                            buf = phantomizer_helper.apply_scripts(options.scripts, base_url, buf);
-                        }
-                        if( options.css ){
-                            create_combined_assets(options.css, paths);
-                            buf = phantomizer_helper.apply_styles(options.css, base_url, buf);
-                        }
-                        buf = add_stryke(buf);
+                    var base_url = request_path.substring(0,request_path.lastIndexOf("/")) || "/";
+                    if( options.scripts ){
+                        create_combined_assets(options.scripts, paths);
+                        buf = phantomizer_helper.apply_scripts(options.scripts, base_url, buf);
+                    }
+                    if( options.css ){
+                        create_combined_assets(options.css, paths);
+                        buf = phantomizer_helper.apply_styles(options.css, base_url, buf);
+                    }
+                    buf = add_stryke(buf);
+                    res.writeHead(200, headers)
+                    res.end(buf)
+                }else{
+                    next()
+                }
+            })
+            app.use(function(req, res, next){
+                var request_path = req.originalUrl
+                if( request_path.indexOf("?")>-1){
+                    request_path = request_path.substring(0,request_path.indexOf("?"))
+                }
+                var headers = {
+                    'Content-Type': http_utils.header_content_type(request_path)
+                };
+                var file = file_utils.find_file(paths,request_path);
+                if( file ){
+                    req_logs[request_path] = file;
+                    var buf = fs.readFileSync(file);
+                    if( headers["Content-Type"].indexOf("text/") > -1 ){
+                        buf = buf.toString();
                     }
                     res.writeHead(200, headers)
                     res.end(buf)
@@ -160,7 +180,7 @@ module.exports = function(grunt) {
                             'Content-Type': 'text/html'
                         };
                         res.writeHead(200, headers);
-                        res.end(buf);
+                        res.end(html);
                     });
                 }else{
                     next()
