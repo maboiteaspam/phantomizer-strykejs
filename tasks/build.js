@@ -103,6 +103,7 @@ module.exports = function(grunt) {
                 })
             }else{
                 grunt.log.ok("the build is fresh")
+                done(true);
             }
         });
 
