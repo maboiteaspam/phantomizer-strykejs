@@ -354,13 +354,16 @@ module.exports = function(grunt) {
         grunt.verbose.writeln(phantomjs.path+" "+childArgs.join(" "));
 
         grunt.log.ok("Starting PhantomJS... ");
-        childProcess.execFile(phantomjs.path, childArgs, function(err, stdout, stderr) {
+        var process = childProcess.execFile(phantomjs.path, childArgs, function(err, stdout, stderr) {
             grunt.log.ok("... Done PhantomJS");
             if( stderr != "" ){
                 console.log(stderr)
                 grunt.log.error("... PhantomJS failed");
             }
             cb(err, stdout, stderr);
+        });
+        process.stdout.on('data', function (data) {
+            console.log(data.trim())
         });
     }
 
