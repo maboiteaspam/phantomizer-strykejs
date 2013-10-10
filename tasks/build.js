@@ -171,7 +171,7 @@ module.exports = function(grunt) {
                 wserver.close();
                 wsserver.close();
 
-                console.log(stdout)
+                // console.log(stdout)
 
                 //-
                 var urls = grunt.file.readJSON(urls_file);
@@ -222,6 +222,8 @@ module.exports = function(grunt) {
                     })
                 }
                 finish(true)
+            }).stdout.on('data', function (data) {
+                console.log(data.trim())
             });
 
         });
@@ -354,16 +356,13 @@ module.exports = function(grunt) {
         grunt.verbose.writeln(phantomjs.path+" "+childArgs.join(" "));
 
         grunt.log.ok("Starting PhantomJS... ");
-        var process = childProcess.execFile(phantomjs.path, childArgs, function(err, stdout, stderr) {
+        return childProcess.execFile(phantomjs.path, childArgs, function(err, stdout, stderr) {
             grunt.log.ok("... Done PhantomJS");
             if( stderr != "" ){
                 console.log(stderr)
                 grunt.log.error("... PhantomJS failed");
             }
             cb(err, stdout, stderr);
-        });
-        process.stdout.on('data', function (data) {
-            console.log(data.trim())
         });
     }
 
