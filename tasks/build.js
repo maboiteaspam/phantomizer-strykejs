@@ -5,6 +5,7 @@ module.exports = function(grunt) {
     var childProcess = require('child_process');
     var phantomjs = require('phantomjs');
     var ph_libutil = require("phantomizer-libutil");
+    var dirlisting = require("phantomizer-html-dirlisting");
     var fs = require("fs");
     var connect = require('connect');
     var http = require('http');
@@ -66,9 +67,11 @@ module.exports = function(grunt) {
 
                 var target_url = "http://localhost:"+port+in_request;
                 var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper.js';
-                execute_phantomjs(wrapper, target_url,function(err, stdout, stderr){
+                execute_phantomjs([wrapper, target_url, out_file],function(err, stdout, stderr){
                     wserver.close();
-                    var retour = extract_html(stdout)
+
+
+                    var retour = grunt.file.read(out_file);
                     // remove stryke configuration used to prevent full execution of the page
                     retour = remove_stryke( retour );
                     // remove requirejs scripts, they are put in the head on runtime
@@ -100,21 +103,14 @@ module.exports = function(grunt) {
                             finish(true)
                         }
                     })
-                })
+                }).stdout.on('data', function (data) {
+                    console.log(data.trim())
+                });
             }else{
                 grunt.log.ok("the build is fresh")
                 done(true);
             }
         });
-
-
-        function extract_html( in_str ){
-            var wdlm = "\r\n\r\n//-----------//\r\n"
-            var dlm = "\n\n//-----------//\n"
-            in_str = in_str.replace(wdlm, dlm)
-            in_str = in_str.substring( in_str.indexOf(dlm)+dlm.length )
-            return in_str
-        }
     });
 
 
@@ -167,7 +163,7 @@ module.exports = function(grunt) {
             grunt.file.write(urls_file, JSON.stringify(raw_urls));
 
             var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper2.js';
-            execute_phantomjs(wrapper, urls_file, function(err, stdout, stderr){
+            execute_phantomjs([wrapper, urls_file], function(err, stdout, stderr){
                 wserver.close();
                 wsserver.close();
 
@@ -195,6 +191,7 @@ module.exports = function(grunt) {
                             deps.push(req_logs[trace[n]])
                         }
                     }
+
                     // add grunt file to dependencies so that file are rebuild when this file changes
                     deps.push(__filename)
                     if ( grunt.file.exists(process.cwd()+"/Gruntfile.js")) {
@@ -300,7 +297,7 @@ module.exports = function(grunt) {
             var file = file_utils.find_dir(paths,request_path);
             if( file != null ){
                 var items = http_utils.merged_dirs(paths, request_path);
-                http_utils.generate_directory_listing(items, function(err, html){
+                dirlisting.generate_directory_listing(items, function(err, html){
                     var headers = {
                         'Content-Type': 'text/html'
                     };
@@ -349,9 +346,10 @@ module.exports = function(grunt) {
             }
         }
     }
-    function execute_phantomjs(wrapper, target_url,cb){
+    function execute_phantomjs(args, cb){
 
-        var childArgs = [ '--load-images=false', wrapper, target_url ]
+        var childArgs = [ '--load-images=false' ];
+        for(var n in args )childArgs.push(args[n])
 
         grunt.verbose.writeln(phantomjs.path+" "+childArgs.join(" "));
 
@@ -365,6 +363,7 @@ module.exports = function(grunt) {
             cb(err, stdout, stderr);
         });
     }
+
 
 
 
