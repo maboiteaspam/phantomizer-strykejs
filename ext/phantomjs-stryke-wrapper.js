@@ -1,29 +1,62 @@
 
-var page = require("webpage").create();
 system = require("system");
+fs = require("fs");
 var target_url = system.args[1];
 var out_file = system.args[2];
-var iff = 0;
 
-page.open(target_url, function (b) {
-    "success" !== b ? (console.log("Unable to access network"), phantom.exit()) : window.setInterval(function () {
-        var a = page.evaluate(function (c) {
-            var a = document.getElementsByTagName("html")[0].getAttribute("class");
-            if (a) {
-                if (-1 == a.indexOf("stryked"))return""
-            }
-            return document.getElementsByTagName("html")[0].innerHTML
-        });
-        if(iff > 10){
-            console.warn("failed to read "+target_url), phantom.exit(1)
-        }else if("" != a){
-            console.log("")
-            console.log("")
-            console.log("//-----------//")
-            console.log(page.content), phantom.exit(0)
-            // console.log(a), phantom.exit(0)
-        }
-        iff++
-    }, 200)
+retrieve_page(target_url, function(success,url,content){
+    fs.write(out_file, content, 'w');
+    phantom.exit(0);
 });
+function retrieve_page(target_url, cb){
+    var page = require("webpage").create();
 
+
+    page.onLoadStarted = function () {
+        console.log('Start loading...'+target_url);
+    };
+
+    page.onConsoleMessage = function(msg, lineNum, sourceId) {
+        console.log('CONSOLE: ' + msg + ' (from line #' + lineNum + ' in "' + sourceId + '")');
+    };
+
+    page.onError = function(msg, trace) {
+        var msgStack = ['ERROR: ' + msg];
+        if (trace && trace.length) {
+            msgStack.push('TRACE:');
+            trace.forEach(function(t) {
+                msgStack.push(' -> ' + t.file + ': ' + t.line + (t.function ? ' (in function "' + t.function + '")' : ''));
+            });
+        }
+        console.error(msgStack.join('\n'));
+    };
+
+    page.onLoadFinished = function (status) {
+        var interval = null;
+        interval = window.setInterval(function () {
+            var a = page.evaluate(function (c) {
+                var a = document.getElementsByTagName("html")[0].getAttribute("class");
+                if (a) {
+                    if (a.indexOf("stryked") != -1 ){
+                        return document.getElementsByTagName("html")[0].innerHTML;
+                    }
+                }
+                return "";
+            });
+            if( a != "" ){
+                cb(true,target_url, a);
+                page.close();
+                clearInterval(interval);
+            }
+        }, 10);
+    };
+
+
+    page.open(target_url, function (b) {
+        if( b !== "success"){
+            console.log("Unable to access network "+target_url);
+        }else{
+            page.evaluate(function () {});
+        }
+    });
+}
