@@ -38,7 +38,7 @@ function retrieve_page(target_url, cb){
                 var a = document.getElementsByTagName("html")[0].getAttribute("class");
                 if (a) {
                     if (a.indexOf("stryked") != -1 ){
-                        return document.getElementsByTagName("html")[0].innerHTML;
+                        return document.getElementsByTagName("html")[0].outerHTML;
                     }
                 }
                 return "";
