@@ -1,6 +1,6 @@
 {
     "name": "phantomizer-strykejs",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "private": true,
     "description": "PhantomJS build support for phantomizer",
     "keywords": "",
