@@ -2,35 +2,46 @@
 
 module.exports = function(grunt) {
 
-    var childProcess = require('child_process');
-    var phantomjs = require('phantomjs');
-    var ph_libutil = require("phantomizer-libutil");
-    var dirlisting = require("phantomizer-html-dirlisting");
-    var fs = require("fs");
-    var connect = require('connect');
-    var http = require('http');
+    var childProcess    = require('child_process');
+    var phantomjs       = require('phantomjs');
+    var ph_libutil      = require("phantomizer-libutil");
+    var dirlisting      = require("phantomizer-html-dirlisting");
+    var fs              = require("fs");
+    var connect         = require('connect');
+    var http            = require('http');
 
     var meta_factory = ph_libutil.meta;
 
-    var http_utils = ph_libutil.http_utils;
-    var router_factory = ph_libutil.router;
-    var file_utils = ph_libutil.file_utils;
-    var optimizer_factory = ph_libutil.optimizer;
-    var phantomizer_helper = ph_libutil.phantomizer_helper;
+    var http_utils          = ph_libutil.http_utils;
+    var router_factory      = ph_libutil.router;
+    var file_utils          = ph_libutil.file_utils;
+    var optimizer_factory   = ph_libutil.optimizer;
+    var phantomizer_helper  = ph_libutil.phantomizer_helper;
 
     grunt.registerMultiTask("phantomizer-strykejs-builder", "Builds html dependencies of a stryke file", function () {
 
         var wd = process.cwd();
 
         var config = grunt.config();
-        var options = this.options();
-        var in_request = options.in_request;
-        var port = options.port;
-        var ssl_port = options.ssl_port;
-        var out_file = options.out;
-        var paths = options.paths;
-        var meta_file = options.meta;
-        var meta_dir = options.meta_dir;
+        var options = this.options({
+            in_request:null,
+            port:null,
+            ssl_port:null,
+            out_file:null,
+            paths:null,
+            meta_file:null,
+            meta_dir:null,
+            scripts:null,
+            css:null,
+            log:false
+        });
+        var in_request  = options.in_request;
+        var port        = options.port;
+        var ssl_port    = options.ssl_port;
+        var out_file    = options.out;
+        var paths       = options.paths;
+        var meta_file   = options.meta;
+        var meta_dir    = options.meta_dir;
 
         var current_grunt_task = this.nameArgs;
         var current_grunt_opt = this.options();
@@ -38,7 +49,7 @@ module.exports = function(grunt) {
 
         var meta_manager = new meta_factory( wd, meta_dir );
         var optimizer = new optimizer_factory(meta_manager, options);
-        var router = new router_factory(config.routing)
+        var router = new router_factory(user_config.routing);
 
         var done = this.async();
         router.load(function(){
@@ -72,11 +83,11 @@ module.exports = function(grunt) {
 
 
                     var retour = grunt.file.read(out_file);
-                    // remove stryke configuration used to prevent full execution of the page
+// remove stryke configuration used to prevent full execution of the page
                     retour = remove_stryke( retour );
-                    // remove requirejs scripts, they are put in the head on runtime
+// remove requirejs scripts, they are put in the head on runtime
                     retour = remove_rjs_trace( retour );
-                    // get traced url call from runtime, remove it from output
+// get traced url call from runtime, remove it from output
                     var trace = extract_stryke_trace( retour )
                     retour = remove_stryke_trace( retour )
                     if( trace.length > 0 ){
@@ -120,7 +131,16 @@ module.exports = function(grunt) {
         var wd = process.cwd();
 
         var config = grunt.config();
-        var options = this.options();
+        var options = this.options({
+            meta_dir:'',
+            port:'',
+            ssl_port:'',
+            urls_file:'',
+            paths:[],
+            scripts:null,
+            css:null,
+            log:false
+        });
         var meta_dir = options.meta_dir;
         var port = options.port;
         var ssl_port = options.ssl_port;
@@ -212,7 +232,7 @@ module.exports = function(grunt) {
                     if(!opt[current_grunt_target]) opt[current_grunt_target] = {};
                     if(!opt[current_grunt_target].options) opt[current_grunt_target].options = {};
                     opt[current_grunt_target].options.url = in_request;
-                    entry.require_task("phantomizer-build2:"+current_grunt_target, opt[current_grunt_target])
+                    entry.require_task("phantomizer-build2:"+current_grunt_target, opt[current_grunt_target]); // why re send to phantomizer-build2 ?
 
                     entry.save(meta_file, function(err){
                         grunt.file.write(out_file, retour)
@@ -237,7 +257,7 @@ module.exports = function(grunt) {
             app.use(connect.logger('dev'))
         }
         app.use(function(req, res, next){
-            var request_path = req.originalUrl
+            var request_path = req.originalUrl;
             if( request_path.indexOf("?")>-1){
                 request_path = request_path.substring(0,request_path.indexOf("?"))
             }
@@ -327,8 +347,9 @@ module.exports = function(grunt) {
         return in_str
     }
     function create_combined_assets(optimizer, assets_combination, source_paths){
+        var target_merge="";
         if( assets_combination.append ){
-            for( var target_merge in assets_combination.append ){
+            for( target_merge in assets_combination.append ){
                 if( target_merge.length > 1 ){
                     var asset_deps = assets_combination.append[target_merge];
                     optimizer.merge_files(target_merge, asset_deps, source_paths);
@@ -337,9 +358,9 @@ module.exports = function(grunt) {
             }
         }
         if( assets_combination.prepend ){
-            for( var target_merge in assets_combination.prepend ){
+            for( target_merge in assets_combination.prepend ){
                 if( target_merge.length > 1 ){
-                    var asset_deps = assets_combination.prepend[target_merge]
+                    var asset_deps = assets_combination.prepend[target_merge];
                     optimizer.merge_files(target_merge, asset_deps, source_paths);
                     grunt.verbose.ok("merged "+target_merge+"")
                 }
@@ -347,7 +368,6 @@ module.exports = function(grunt) {
         }
     }
     function execute_phantomjs(args, cb){
-
         var childArgs = [ '--load-images=false' ];
         for(var n in args )childArgs.push(args[n])
 
@@ -383,13 +403,13 @@ module.exports = function(grunt) {
     function extract_stryke_trace( in_str ){
         var ptn = /<div id="stryke_trace">([^<]*?)<\/div>/gi
         var retour = []
-        var trace=in_str.match(ptn);
+        var trace = in_str.match(ptn);
         if( trace != null && trace.length > 0 ){
             trace=trace[0]
             trace=trace.substring( ('<div id="stryke_trace">').length )
             trace=trace.substring( 0, trace.length-('</div>').length )
             trace=trace.split(/\r\n|\r|\n/);
-            retour = trace
+            retour = trace;
         }
         return retour
     }

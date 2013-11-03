@@ -24,7 +24,7 @@ module.exports = function(grunt) {
                 options:{
                     "in_request":"/index.html"
                     ,"out": "<%= out_dir %>/index.html"
-                    ,"meta": "<%= meta_dir %>/index.html.meta"
+                    ,"meta": "<%= meta_dir %>/index.html"
                 }
             }
         }
