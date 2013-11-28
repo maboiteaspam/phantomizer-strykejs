@@ -132,6 +132,7 @@ module.exports = function(grunt) {
 
         var config = grunt.config();
         var options = this.options({
+            run_dir:'',
             meta_dir:'',
             port:'',
             ssl_port:'',
@@ -141,10 +142,11 @@ module.exports = function(grunt) {
             css:null,
             log:false
         });
-        var meta_dir = options.meta_dir;
-        var port = options.port;
-        var ssl_port = options.ssl_port;
-        var urls_file = options.urls_file;
+        var run_dir     = options.run_dir;
+        var meta_dir    = options.meta_dir;
+        var port        = options.port;
+        var ssl_port    = options.ssl_port;
+        var urls_file   = options.urls_file;
 
         var paths = options.paths;
 
@@ -175,8 +177,8 @@ module.exports = function(grunt) {
             }
 
             var raw_urls = grunt.file.readJSON(urls_file);
-            urls_file = "tmp/urls2.json";
-            grunt.file.mkdir("tmp")
+            urls_file = run_dir+"tmp/phantomjs-urls.json";
+            grunt.file.mkdir(run_dir+"tmp")
             for( var n in raw_urls ){
                 raw_urls[n].in_request = "http://localhost:"+port+raw_urls[n].in_request+"";
             }
