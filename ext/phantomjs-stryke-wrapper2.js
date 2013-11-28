@@ -3,9 +3,10 @@
 var fs = require('fs');
 system = require("system");
 webpage = require("webpage");
-var urls_file = system.args[1];
+var in_urls_file = system.args[1];
+var out_urls_file = system.args[2];
 
-var data = fs.read(urls_file).toString();
+var data = fs.read(in_urls_file).toString();
 
 var target_urls = JSON.parse(data);
 
@@ -81,7 +82,7 @@ function retrieve_page(target_url, cb){
     };
 
     page.onLoadFinished = function (status) {
-        console.log('finisehd...'+target_url);
+        console.log('finished...'+target_url);
         var interval = null;
         interval = window.setInterval(function () {
             var a = page.evaluate(function (c) {
