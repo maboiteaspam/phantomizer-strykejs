@@ -269,23 +269,28 @@ module.exports = function(grunt) {
             var route = router.match(request_path);
             if( route != false && headers["Content-Type"].indexOf("text/") > -1 ){
                 var file = file_utils.find_file(paths,route.template);
-                req_logs[request_path] = file;
-                var buf = fs.readFileSync(file);
-                if( headers["Content-Type"].indexOf("text/") > -1 ){
-                    buf = buf.toString();
+                if(! file ){
+                    grunt.log.error("found invalid route in your configuration file "+request_path);
+                    next()
+                }else{
+                    req_logs[request_path] = file;
+                    var buf = fs.readFileSync(file);
+                    if( headers["Content-Type"].indexOf("text/") > -1 ){
+                        buf = buf.toString();
+                    }
+                    var base_url = request_path.substring(0,request_path.lastIndexOf("/")) || "/";
+                    if( options.scripts ){
+                        create_combined_assets(optimizer, options.scripts, paths);
+                        buf = phantomizer_helper.apply_scripts(options.scripts, base_url, buf);
+                    }
+                    if( options.css ){
+                        create_combined_assets(optimizer, options.css, paths);
+                        buf = phantomizer_helper.apply_styles(options.css, base_url, buf);
+                    }
+                    buf = add_stryke(buf);
+                    res.writeHead(200, headers)
+                    res.end(buf)
                 }
-                var base_url = request_path.substring(0,request_path.lastIndexOf("/")) || "/";
-                if( options.scripts ){
-                    create_combined_assets(optimizer, options.scripts, paths);
-                    buf = phantomizer_helper.apply_scripts(options.scripts, base_url, buf);
-                }
-                if( options.css ){
-                    create_combined_assets(optimizer, options.css, paths);
-                    buf = phantomizer_helper.apply_styles(options.css, base_url, buf);
-                }
-                buf = add_stryke(buf);
-                res.writeHead(200, headers)
-                res.end(buf)
             }else{
                 next()
             }
