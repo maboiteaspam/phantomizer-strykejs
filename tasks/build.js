@@ -265,7 +265,7 @@ module.exports = function(grunt) {
             if(request_path.match(/^\/stryke_b64/) ){
                 request_path = request_path.replace( /^\/stryke_b64/, "" );
 
-                var file = file_utils.find_file(user_config.web_paths, request_path);
+                var file = file_utils.find_file(paths, request_path);
 
                 if( file ){
                     var buf = fs.readFileSync(file).toString('base64');
