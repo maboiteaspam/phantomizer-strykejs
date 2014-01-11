@@ -259,10 +259,30 @@ module.exports = function(grunt) {
             app.use(connect.logger('dev'))
         }
         app.use(function(req, res, next){
-            var request_path = req.originalUrl;
-            if( request_path.indexOf("?")>-1){
-                request_path = request_path.substring(0,request_path.indexOf("?"))
+
+            var request_path = get_request_path( req.originalUrl )
+
+            if(request_path.match(/^\/stryke_b64/) ){
+                request_path = request_path.replace( /^\/stryke_b64/, "" );
+
+                var file = file_utils.find_file(user_config.web_paths, request_path);
+
+                if( file ){
+                    var buf = fs.readFileSync(file).toString('base64');
+                    var headers = {
+                        'Content-Type': http_utils.header_content_type(file)
+                    };
+                    res.writeHead(200, headers)
+                    res.end("data:"+headers['Content-Type']+";base64,"+ buf )
+                }else{
+                    next()
+                }
+            }else{
+                next()
             }
+        })
+        app.use(function(req, res, next){
+            var request_path = get_request_path( req.originalUrl )
             var headers = {
                 'Content-Type': http_utils.header_content_type(request_path)
             };
@@ -296,10 +316,7 @@ module.exports = function(grunt) {
             }
         })
         app.use(function(req, res, next){
-            var request_path = req.originalUrl
-            if( request_path.indexOf("?")>-1){
-                request_path = request_path.substring(0,request_path.indexOf("?"))
-            }
+            var request_path = get_request_path( req.originalUrl )
             var headers = {
                 'Content-Type': http_utils.header_content_type(request_path)
             };
@@ -317,10 +334,7 @@ module.exports = function(grunt) {
             }
         })
         app.use(function(req, res, next){
-            var request_path = req.originalUrl;
-            if( request_path.indexOf("?")>-1){
-                request_path = request_path.substring(0,request_path.indexOf("?"))
-            }
+            var request_path = get_request_path( req.originalUrl )
             var file = file_utils.find_dir(paths,request_path);
             if( file != null ){
                 var items = http_utils.merged_dirs(paths, request_path);
@@ -344,6 +358,12 @@ module.exports = function(grunt) {
         })
 
         return app;
+    }
+    function get_request_path( request_path ){
+        if( request_path.indexOf("?")>-1){
+            request_path = request_path.substring(0,request_path.indexOf("?"))
+        }
+        return request_path
     }
     function add_stryke( in_str ){
         var stryke = ""
