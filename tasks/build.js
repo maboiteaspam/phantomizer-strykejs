@@ -251,6 +251,9 @@ module.exports = function(grunt) {
 
     function get_webserver(router, optimizer, options, req_logs){
         var paths = options.paths;
+        var requirejs_src = options.scripts.requirejs.src;
+        var requirejs_baseUrl = options.scripts.requirejs.baseUrl;
+        var requirejs_paths = options.scripts.requirejs.paths;
 
         var app = connect();
         app.use(connect.query())
@@ -281,6 +284,7 @@ module.exports = function(grunt) {
                 next()
             }
         })
+// routed request, html only
         app.use(function(req, res, next){
             var request_path = get_request_path( req.originalUrl )
             var headers = {
@@ -307,6 +311,7 @@ module.exports = function(grunt) {
                         create_combined_assets(optimizer, options.css, paths);
                         buf = phantomizer_helper.apply_styles(options.css, base_url, buf);
                     }
+                    buf = phantomizer_helper.inject_requirejs(requirejs_baseUrl, requirejs_src, requirejs_paths, buf, null);
                     buf = add_stryke(buf);
                     res.writeHead(200, headers)
                     res.end(buf)
@@ -315,6 +320,7 @@ module.exports = function(grunt) {
                 next()
             }
         })
+// various asset including text / binary
         app.use(function(req, res, next){
             var request_path = get_request_path( req.originalUrl )
             var headers = {
@@ -333,6 +339,7 @@ module.exports = function(grunt) {
                 next()
             }
         })
+// directory listing
         app.use(function(req, res, next){
             var request_path = get_request_path( req.originalUrl )
             var file = file_utils.find_dir(paths,request_path);
