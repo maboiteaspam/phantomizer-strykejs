@@ -230,11 +230,12 @@ module.exports = function(grunt) {
                     // create a cache entry, so that later we can regen or check freshness
                     var entry = meta_manager.create(deps);
 
+                    // save phantomizer-html-builder2 task options
                     var opt = grunt.config.get("phantomizer-html-builder2");
                     if(!opt[current_grunt_target]) opt[current_grunt_target] = {};
                     if(!opt[current_grunt_target].options) opt[current_grunt_target].options = {};
                     opt[current_grunt_target].options.url = in_request;
-                    entry.require_task("phantomizer-build2:"+current_grunt_target, opt[current_grunt_target]); // why re send to phantomizer-build2 ?
+                    entry.require_task("phantomizer-html-builder2:"+current_grunt_target, opt[current_grunt_target]);
 
                     entry.save(meta_file, function(err){
                         grunt.file.write(out_file, retour)
