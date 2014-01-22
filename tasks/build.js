@@ -295,7 +295,7 @@ module.exports = function(grunt) {
             if( route != false && headers["Content-Type"].indexOf("text/") > -1 ){
                 var file = file_utils.find_file(paths,route.template);
                 if(! file ){
-                    grunt.log.error("found invalid route in your configuration file "+request_path);
+                    grunt.log.error("Cannot find the template "+route.template+" for url route "+request_path);
                     next()
                 }else{
                     req_logs[request_path] = file;
