@@ -187,7 +187,7 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
 
 
 
-    grunt.registerMultiTask(<span class="hljs-string">"phantomizer-strykejs-builder2"</span>, <span class="hljs-string">"Builds html dependencies of a stryke file"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+    grunt.registerMultiTask(<span class="hljs-string">"phantomizer-strykejs-project-builder"</span>, <span class="hljs-string">"Builds html dependencies of a stryke file"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
 
         <span class="hljs-keyword">var</span> wd = process.cwd();
 
@@ -326,14 +326,14 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
         
       
         
-        <p>save phantomizer-html-builder2 task options</p>
+        <p>save phantomizer-strykejs-project-builder task options</p>
 
         
-          <div class='highlight'><pre>                    <span class="hljs-keyword">var</span> opt = grunt.config.get(<span class="hljs-string">"phantomizer-html-builder2"</span>);
+          <div class='highlight'><pre>                    <span class="hljs-keyword">var</span> opt = grunt.config.get(<span class="hljs-string">"phantomizer-strykejs-project-builder"</span>);
                     <span class="hljs-keyword">if</span>(!opt[current_grunt_target]) opt[current_grunt_target] = {};
                     <span class="hljs-keyword">if</span>(!opt[current_grunt_target].options) opt[current_grunt_target].options = {};
                     opt[current_grunt_target].options.url = in_request;
-                    entry.require_task(<span class="hljs-string">"phantomizer-html-builder2:"</span>+current_grunt_target, opt[current_grunt_target]);
+                    entry.require_task(<span class="hljs-string">"phantomizer-strykejs-project-builder:"</span>+current_grunt_target, opt[current_grunt_target]);
 
                     entry.save(meta_file, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err)</span>{</span>
                         grunt.file.write(out_file, retour)
