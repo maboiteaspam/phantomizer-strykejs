@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>build.js</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <link rel="stylesheet" media="all" href="public/stylesheets/normalize.css" />
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="page">
+
+      <div class="header">
+        
+          <h1>build.js</h1>
+        
+
+        
+      </div>
+
+      
+        
+        
+        
+          <div class='highlight'><pre><span class="hljs-pi">'use strict'</span>;
+
+module.exports = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(grunt)</span> {</span>
+
+    <span class="hljs-keyword">var</span> childProcess    = <span class="hljs-built_in">require</span>(<span class="hljs-string">'child_process'</span>);
+    <span class="hljs-keyword">var</span> phantomjs       = <span class="hljs-built_in">require</span>(<span class="hljs-string">'phantomjs'</span>);
+    <span class="hljs-keyword">var</span> ph_libutil      = <span class="hljs-built_in">require</span>(<span class="hljs-string">"phantomizer-libutil"</span>);
+    <span class="hljs-keyword">var</span> dirlisting      = <span class="hljs-built_in">require</span>(<span class="hljs-string">"phantomizer-html-dirlisting"</span>);
+    <span class="hljs-keyword">var</span> fs              = <span class="hljs-built_in">require</span>(<span class="hljs-string">"fs"</span>);
+    <span class="hljs-keyword">var</span> connect         = <span class="hljs-built_in">require</span>(<span class="hljs-string">'connect'</span>);
+    <span class="hljs-keyword">var</span> http            = <span class="hljs-built_in">require</span>(<span class="hljs-string">'http'</span>);
+    <span class="hljs-keyword">var</span> path            = <span class="hljs-built_in">require</span>(<span class="hljs-string">'path'</span>);
+
+    <span class="hljs-keyword">var</span> meta_factory = ph_libutil.meta;
+
+    <span class="hljs-keyword">var</span> http_utils          = ph_libutil.http_utils;
+    <span class="hljs-keyword">var</span> router_factory      = ph_libutil.router;
+    <span class="hljs-keyword">var</span> file_utils          = ph_libutil.file_utils;
+    <span class="hljs-keyword">var</span> optimizer_factory   = ph_libutil.optimizer;
+    <span class="hljs-keyword">var</span> phantomizer_helper  = ph_libutil.phantomizer_helper;
+
+    grunt.registerMultiTask(<span class="hljs-string">"phantomizer-strykejs-builder"</span>, <span class="hljs-string">"Builds html dependencies of a stryke file"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+
+        <span class="hljs-keyword">var</span> wd = process.cwd();
+
+        <span class="hljs-keyword">var</span> config = grunt.config();
+        <span class="hljs-keyword">var</span> options = <span class="hljs-keyword">this</span>.options({
+            in_request:<span class="hljs-literal">null</span>,
+            port:<span class="hljs-literal">null</span>,
+            ssl_port:<span class="hljs-literal">null</span>,
+            out_file:<span class="hljs-literal">null</span>,
+            paths:<span class="hljs-literal">null</span>,
+            meta_file:<span class="hljs-literal">null</span>,
+            meta_dir:<span class="hljs-literal">null</span>,
+            scripts:<span class="hljs-literal">null</span>,
+            css:<span class="hljs-literal">null</span>,
+            log:<span class="hljs-literal">false</span>
+        });
+        <span class="hljs-keyword">var</span> in_request  = options.in_request;
+        <span class="hljs-keyword">var</span> port        = options.port;
+        <span class="hljs-keyword">var</span> ssl_port    = options.ssl_port;
+        <span class="hljs-keyword">var</span> out_file    = options.out;
+        <span class="hljs-keyword">var</span> paths       = options.paths;
+        <span class="hljs-keyword">var</span> meta_file   = options.meta;
+        <span class="hljs-keyword">var</span> meta_dir    = options.meta_dir;
+
+        <span class="hljs-keyword">var</span> current_grunt_task = <span class="hljs-keyword">this</span>.nameArgs;
+        <span class="hljs-keyword">var</span> current_grunt_opt = <span class="hljs-keyword">this</span>.options();
+        <span class="hljs-keyword">var</span> user_config = grunt.config();
+
+        <span class="hljs-keyword">var</span> meta_manager = <span class="hljs-keyword">new</span> meta_factory( wd, meta_dir );
+        <span class="hljs-keyword">var</span> optimizer = <span class="hljs-keyword">new</span> optimizer_factory(meta_manager, config);
+        <span class="hljs-keyword">var</span> router = <span class="hljs-keyword">new</span> router_factory(user_config.routing);
+
+        <span class="hljs-keyword">var</span> done = <span class="hljs-keyword">this</span>.async();
+        router.load(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span></pre></div>
+        
+      
+        
+        <p>check if a cache entry exists, if it is fresh, just serve it</p>
+
+        
+          <div class='highlight'><pre>            <span class="hljs-keyword">if</span>( meta_manager.is_fresh(meta_file) == <span class="hljs-literal">false</span> ){
+
+                <span class="hljs-keyword">var</span> req_logs = {}
+                <span class="hljs-keyword">var</span> app = get_webserver(router, optimizer, options, req_logs);
+                <span class="hljs-keyword">var</span> wserver = http.createServer(app).listen(port);
+
+                <span class="hljs-keyword">var</span> finish = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(res)</span>{</span></pre></div>
+        
+      
+        
+        <p>return;</p>
+
+        
+          <div class='highlight'><pre>                    <span class="hljs-keyword">if</span>( res == <span class="hljs-literal">true</span> ){
+                        grunt.log.ok()
+                        done(<span class="hljs-literal">true</span>);
+                    }<span class="hljs-keyword">else</span>{
+                        grunt.log.error(res)
+                        done(<span class="hljs-literal">false</span>);
+                    }
+                }
+
+                <span class="hljs-keyword">var</span> deps = []
+                <span class="hljs-keyword">var</span> route = router.match(in_request);
+                <span class="hljs-keyword">var</span> file = file_utils.find_file(paths,route.template);
+                deps.push(file);
+
+                <span class="hljs-keyword">var</span> target_url = <span class="hljs-string">"http://localhost:"</span>+port+in_request;
+                <span class="hljs-keyword">var</span> wrapper = __dirname+<span class="hljs-string">'/../ext/phantomjs-stryke-wrapper.js'</span>;
+                execute_phantomjs([wrapper, target_url, out_file],<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err, stdout, stderr)</span>{</span>
+                    wserver.close();
+
+
+                    <span class="hljs-keyword">var</span> retour = grunt.file.read(out_file);</pre></div>
+        
+      
+        
+        <p>remove stryke configuration used to prevent full execution of the page</p>
+
+        
+          <div class='highlight'><pre>                    retour = remove_stryke( retour );</pre></div>
+        
+      
+        
+        <p>remove requirejs scripts, they are put in the head on runtime</p>
+
+        
+          <div class='highlight'><pre>                    retour = remove_rjs_trace( retour );</pre></div>
+        
+      
+        
+        <p>get traced url call from runtime, remove it from output</p>
+
+        
+          <div class='highlight'><pre>                    <span class="hljs-keyword">var</span> trace = extract_stryke_trace( retour )
+                    retour = remove_stryke_trace( retour )
+                    <span class="hljs-keyword">if</span>( trace.length &gt; <span class="hljs-number">0</span> ){
+                        trace.unshift(in_request)
+                        <span class="hljs-keyword">for</span>(<span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> trace){
+                            deps.push(req_logs[trace[n]])
+                        }
+                    }</pre></div>
+        
+      
+        
+        <p>add grunt file to dependencies so that file are rebuild when this file changes</p>
+
+        
+          <div class='highlight'><pre>                    deps.push(__filename)
+                    <span class="hljs-keyword">if</span> ( grunt.file.exists(process.cwd()+<span class="hljs-string">"/Gruntfile.js"</span>)) {
+                        deps.push(process.cwd()+<span class="hljs-string">"/Gruntfile.js"</span>)
+                    }
+                    <span class="hljs-keyword">if</span> ( grunt.file.exists(user_config.project_dir+<span class="hljs-string">"/../config.json"</span>)) {
+                        deps.push( user_config.project_dir+<span class="hljs-string">"/../config.json"</span>)
+                    }</pre></div>
+        
+      
+        
+        <p>create a cache entry, so that later we can regen or check freshness</p>
+
+        
+          <div class='highlight'><pre>                    <span class="hljs-keyword">var</span> entry = meta_manager.create(deps)
+                    entry.require_task(current_grunt_task, current_grunt_opt)
+                    entry.save(meta_file, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err)</span>{</span>
+                        <span class="hljs-keyword">if</span> (err) finish(err)
+                        <span class="hljs-keyword">else</span>{
+                            grunt.file.write(out_file, retour)
+                            finish(<span class="hljs-literal">true</span>)
+                        }
+                    })
+                }).stdout.on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
+                    console.log(data.trim())
+                });
+            }<span class="hljs-keyword">else</span>{
+                grunt.log.ok(<span class="hljs-string">"the build is fresh"</span>)
+                done(<span class="hljs-literal">true</span>);
+            }
+        });
+    });
+
+
+
+    grunt.registerMultiTask(<span class="hljs-string">"phantomizer-strykejs-builder2"</span>, <span class="hljs-string">"Builds html dependencies of a stryke file"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+
+        <span class="hljs-keyword">var</span> wd = process.cwd();
+
+        <span class="hljs-keyword">var</span> config = grunt.config();
+        <span class="hljs-keyword">var</span> options = <span class="hljs-keyword">this</span>.options({
+            run_dir:<span class="hljs-string">''</span>,
+            meta_dir:<span class="hljs-string">''</span>,
+            port:<span class="hljs-string">''</span>,
+            ssl_port:<span class="hljs-string">''</span>,
+            urls_file:<span class="hljs-string">''</span>,
+            paths:[],
+            scripts:<span class="hljs-literal">null</span>,
+            css:<span class="hljs-literal">null</span>,
+            log:<span class="hljs-literal">false</span>
+        });
+        <span class="hljs-keyword">var</span> run_dir     = options.run_dir;
+        <span class="hljs-keyword">var</span> meta_dir    = options.meta_dir;
+        <span class="hljs-keyword">var</span> port        = options.port;
+        <span class="hljs-keyword">var</span> ssl_port    = options.ssl_port;
+        <span class="hljs-keyword">var</span> urls_file   = options.urls_file;
+
+        <span class="hljs-keyword">var</span> paths = options.paths;
+
+        <span class="hljs-keyword">var</span> current_grunt_target = <span class="hljs-keyword">this</span>.target;
+        <span class="hljs-keyword">var</span> user_config = grunt.config();
+
+        <span class="hljs-keyword">var</span> meta_manager = <span class="hljs-keyword">new</span> meta_factory( wd, meta_dir );
+        <span class="hljs-keyword">var</span> optimizer = <span class="hljs-keyword">new</span> optimizer_factory(meta_manager, config);
+        <span class="hljs-keyword">var</span> router = <span class="hljs-keyword">new</span> router_factory(config.routing);
+
+        <span class="hljs-keyword">var</span> req_logs = {}
+        <span class="hljs-keyword">var</span> app = get_webserver(router, optimizer, options, req_logs);
+        <span class="hljs-keyword">var</span> wserver = http.createServer(app).listen(port);
+        <span class="hljs-keyword">var</span> wsserver = http.createServer(app).listen(ssl_port);
+
+        <span class="hljs-keyword">var</span> done = <span class="hljs-keyword">this</span>.async();
+        router.load(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
+
+            <span class="hljs-keyword">var</span> finish = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(res)</span>{</span>
+                <span class="hljs-keyword">if</span>( res == <span class="hljs-literal">true</span> ){
+                    grunt.log.ok()
+                    done(<span class="hljs-literal">true</span>);
+                }<span class="hljs-keyword">else</span>{
+                    grunt.log.error(res)
+                    done(<span class="hljs-literal">false</span>);
+                }
+            }</pre></div>
+        
+      
+        
+        <p>fetch urls to build</p>
+
+        
+          <div class='highlight'><pre>            <span class="hljs-keyword">var</span> raw_urls = grunt.file.readJSON(urls_file)
+            grunt.log.ok(<span class="hljs-string">"URL Count "</span>+raw_urls.length);
+
+            <span class="hljs-keyword">var</span> strykejs_urls_file = run_dir+<span class="hljs-string">"/tmp/strykejs-urls.json"</span>;
+            grunt.file.mkdir( path.dirname(strykejs_urls_file) )
+            <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> raw_urls ){
+                raw_urls[n].in_request = <span class="hljs-string">"http://localhost:"</span>+port+raw_urls[n].in_request+<span class="hljs-string">""</span>;
+            }
+            grunt.file.write(strykejs_urls_file, <span class="hljs-built_in">JSON</span>.stringify(raw_urls));
+
+            <span class="hljs-keyword">var</span> wrapper = __dirname+<span class="hljs-string">'/../ext/phantomjs-stryke-wrapper2.js'</span>;
+            execute_phantomjs([wrapper, strykejs_urls_file], <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err, stdout, stderr)</span>{</span>
+                wserver.close();
+                wsserver.close();
+
+                grunt.file.delete(strykejs_urls_file);</pre></div>
+        
+      
+        
+        <p>-</p>
+
+        
+          <div class='highlight'><pre>                <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> raw_urls ){
+                    <span class="hljs-keyword">var</span> in_request = raw_urls[n].in_request;
+                    <span class="hljs-keyword">var</span> meta_file = raw_urls[n].meta_file;
+                    <span class="hljs-keyword">var</span> out_file = raw_urls[n].out_file;
+                    <span class="hljs-keyword">var</span> deps = [];
+
+                    <span class="hljs-keyword">var</span> retour = grunt.file.read(out_file);</pre></div>
+        
+      
+        
+        <p>remove stryke configuration used to prevent full execution of the page</p>
+
+        
+          <div class='highlight'><pre>                    retour = remove_stryke( retour );</pre></div>
+        
+      
+        
+        <p>remove requirejs scripts, they are put in the head on runtime</p>
+
+        
+          <div class='highlight'><pre>                    retour = remove_rjs_trace( retour );</pre></div>
+        
+      
+        
+        <p>get traced url call from runtime, remove it from output</p>
+
+        
+          <div class='highlight'><pre>                    <span class="hljs-keyword">var</span> trace = extract_stryke_trace( retour )
+                    retour = remove_stryke_trace( retour )
+                    <span class="hljs-keyword">if</span>( trace.length &gt; <span class="hljs-number">0</span> ){
+                        trace.unshift(in_request);
+                        <span class="hljs-keyword">for</span>(<span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> trace){
+                            deps.push(req_logs[trace[n]]);
+                        }
+                    }</pre></div>
+        
+      
+        
+        <p>add grunt file to dependencies so that file are rebuild when this file changes</p>
+
+        
+          <div class='highlight'><pre>                    deps.push(__filename)
+                    <span class="hljs-keyword">if</span> ( grunt.file.exists(process.cwd()+<span class="hljs-string">"/Gruntfile.js"</span>)) {
+                        deps.push(process.cwd()+<span class="hljs-string">"/Gruntfile.js"</span>)
+                    }
+                    <span class="hljs-keyword">if</span> ( grunt.file.exists(user_config.project_dir+<span class="hljs-string">"/../config.json"</span>)) {
+                        deps.push( user_config.project_dir+<span class="hljs-string">"/../config.json"</span>)
+                    }
+                    <span class="hljs-keyword">var</span> route = router.match(in_request);
+                    <span class="hljs-keyword">if</span>( route != <span class="hljs-literal">false</span> ){
+                        <span class="hljs-keyword">var</span> file = file_utils.find_file(paths,route.template);
+                        deps.push(file);
+                    }</pre></div>
+        
+      
+        
+        <p>create a cache entry, so that later we can regen or check freshness</p>
+
+        
+          <div class='highlight'><pre>                    <span class="hljs-keyword">var</span> entry = meta_manager.create(deps);</pre></div>
+        
+      
+        
+        <p>save phantomizer-html-builder2 task options</p>
+
+        
+          <div class='highlight'><pre>                    <span class="hljs-keyword">var</span> opt = grunt.config.get(<span class="hljs-string">"phantomizer-html-builder2"</span>);
+                    <span class="hljs-keyword">if</span>(!opt[current_grunt_target]) opt[current_grunt_target] = {};
+                    <span class="hljs-keyword">if</span>(!opt[current_grunt_target].options) opt[current_grunt_target].options = {};
+                    opt[current_grunt_target].options.url = in_request;
+                    entry.require_task(<span class="hljs-string">"phantomizer-html-builder2:"</span>+current_grunt_target, opt[current_grunt_target]);
+
+                    entry.save(meta_file, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err)</span>{</span>
+                        grunt.file.write(out_file, retour)
+                    })
+                }
+                finish(<span class="hljs-literal">true</span>)
+            }).stdout.on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
+                console.log(data.trim())
+            });
+
+        });
+    });
+
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">get_webserver</span><span class="hljs-params">(router, optimizer, options, req_logs)</span>{</span>
+        <span class="hljs-keyword">var</span> paths = options.paths;
+        <span class="hljs-keyword">var</span> requirejs_src = options.scripts.requirejs.src;
+        <span class="hljs-keyword">var</span> requirejs_baseUrl = options.scripts.requirejs.baseUrl;
+        <span class="hljs-keyword">var</span> requirejs_paths = options.scripts.requirejs.paths;
+
+        <span class="hljs-keyword">var</span> app = connect();
+        app.use(connect.query())
+        app.use(connect.urlencoded())
+        <span class="hljs-keyword">if</span>( options.log == <span class="hljs-literal">true</span> ){
+            app.use(connect.logger(<span class="hljs-string">'dev'</span>))
+        }
+        app.use(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(req, res, next)</span>{</span>
+
+            <span class="hljs-keyword">var</span> request_path = get_request_path( req.originalUrl )
+
+            <span class="hljs-keyword">if</span>(request_path.match(<span class="hljs-regexp">/^\/stryke_b64/</span>) ){
+                request_path = request_path.replace( <span class="hljs-regexp">/^\/stryke_b64/</span>, <span class="hljs-string">""</span> );
+
+                <span class="hljs-keyword">var</span> file = file_utils.find_file(paths, request_path);
+
+                <span class="hljs-keyword">if</span>( file ){
+                    <span class="hljs-keyword">var</span> buf = fs.readFileSync(file).toString(<span class="hljs-string">'base64'</span>);
+                    <span class="hljs-keyword">var</span> headers = {
+                        <span class="hljs-string">'Content-Type'</span>: http_utils.header_content_type(file)
+                    };
+                    res.writeHead(<span class="hljs-number">200</span>, headers)
+                    res.end(<span class="hljs-string">"data:"</span>+headers[<span class="hljs-string">'Content-Type'</span>]+<span class="hljs-string">";base64,"</span>+ buf )
+                }<span class="hljs-keyword">else</span>{
+                    next()
+                }
+            }<span class="hljs-keyword">else</span>{
+                next()
+            }
+        })</pre></div>
+        
+      
+        
+        <p>routed request, html only</p>
+
+        
+          <div class='highlight'><pre>        app.use(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(req, res, next)</span>{</span>
+            <span class="hljs-keyword">var</span> request_path = get_request_path( req.originalUrl )
+            <span class="hljs-keyword">var</span> headers = {
+                <span class="hljs-string">'Content-Type'</span>: http_utils.header_content_type(request_path)
+            };
+            <span class="hljs-keyword">var</span> route = router.match(request_path);
+            <span class="hljs-keyword">if</span>( route != <span class="hljs-literal">false</span> &amp;&amp; headers[<span class="hljs-string">"Content-Type"</span>].indexOf(<span class="hljs-string">"text/"</span>) &gt; -<span class="hljs-number">1</span> ){
+                <span class="hljs-keyword">var</span> file = file_utils.find_file(paths,route.template);
+                <span class="hljs-keyword">if</span>(! file ){
+                    grunt.log.error(<span class="hljs-string">"Cannot find the template "</span>+route.template+<span class="hljs-string">" for url route "</span>+request_path);
+                    next()
+                }<span class="hljs-keyword">else</span>{
+                    req_logs[request_path] = file;
+                    <span class="hljs-keyword">var</span> buf = fs.readFileSync(file);
+                    <span class="hljs-keyword">if</span>( headers[<span class="hljs-string">"Content-Type"</span>].indexOf(<span class="hljs-string">"text/"</span>) &gt; -<span class="hljs-number">1</span> ){
+                        buf = buf.toString();
+                    }
+                    <span class="hljs-keyword">var</span> base_url = request_path.substring(<span class="hljs-number">0</span>,request_path.lastIndexOf(<span class="hljs-string">"/"</span>)) || <span class="hljs-string">"/"</span>;
+                    <span class="hljs-keyword">if</span>( options.scripts ){
+                        create_combined_assets(optimizer, options.scripts, paths);
+                        buf = phantomizer_helper.apply_scripts(options.scripts, base_url, buf);
+                    }
+                    <span class="hljs-keyword">if</span>( options.css ){
+                        create_combined_assets(optimizer, options.css, paths);
+                        buf = phantomizer_helper.apply_styles(options.css, base_url, buf);
+                    }
+                    buf = phantomizer_helper.inject_requirejs(requirejs_baseUrl, requirejs_src, requirejs_paths, buf, <span class="hljs-literal">null</span>);
+                    buf = add_stryke(buf);
+                    res.writeHead(<span class="hljs-number">200</span>, headers)
+                    res.end(buf)
+                }
+            }<span class="hljs-keyword">else</span>{
+                next()
+            }
+        })</pre></div>
+        
+      
+        
+        <p>various asset including text / binary</p>
+
+        
+          <div class='highlight'><pre>        app.use(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(req, res, next)</span>{</span>
+            <span class="hljs-keyword">var</span> request_path = get_request_path( req.originalUrl )
+            <span class="hljs-keyword">var</span> headers = {
+                <span class="hljs-string">'Content-Type'</span>: http_utils.header_content_type(request_path)
+            };
+            <span class="hljs-keyword">var</span> file = file_utils.find_file(paths,request_path);
+            <span class="hljs-keyword">if</span>( file ){
+                req_logs[request_path] = file;
+                <span class="hljs-keyword">var</span> buf = fs.readFileSync(file);
+                <span class="hljs-keyword">if</span>( headers[<span class="hljs-string">"Content-Type"</span>].indexOf(<span class="hljs-string">"text/"</span>) &gt; -<span class="hljs-number">1</span> ){
+                    buf = buf.toString();
+                }
+                res.writeHead(<span class="hljs-number">200</span>, headers)
+                res.end(buf)
+            }<span class="hljs-keyword">else</span>{
+                next()
+            }
+        })</pre></div>
+        
+      
+        
+        <p>directory listing</p>
+
+        
+          <div class='highlight'><pre>        app.use(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(req, res, next)</span>{</span>
+            <span class="hljs-keyword">var</span> request_path = get_request_path( req.originalUrl )
+            <span class="hljs-keyword">var</span> file = file_utils.find_dir(paths,request_path);
+            <span class="hljs-keyword">if</span>( file != <span class="hljs-literal">null</span> ){
+                <span class="hljs-keyword">var</span> items = http_utils.merged_dirs(paths, request_path);
+                dirlisting.generate_directory_listing(items, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err, html)</span>{</span>
+                    <span class="hljs-keyword">var</span> headers = {
+                        <span class="hljs-string">'Content-Type'</span>: <span class="hljs-string">'text/html'</span>
+                    };
+                    res.writeHead(<span class="hljs-number">200</span>, headers);
+                    res.end(html);
+                });
+            }<span class="hljs-keyword">else</span>{
+                next()
+            }
+        })
+        app.use(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(req, res)</span>{</span>
+            <span class="hljs-keyword">var</span> headers = {
+                <span class="hljs-string">'Content-Type'</span>: <span class="hljs-string">'text/html'</span>
+            };
+            res.writeHead(<span class="hljs-number">404</span>, headers)
+            res.end(<span class="hljs-string">"not found"</span>)
+        })
+
+        <span class="hljs-keyword">return</span> app;
+    }
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">get_request_path</span><span class="hljs-params">( request_path )</span>{</span>
+        <span class="hljs-keyword">if</span>( request_path.indexOf(<span class="hljs-string">"?"</span>)&gt;-<span class="hljs-number">1</span>){
+            request_path = request_path.substring(<span class="hljs-number">0</span>,request_path.indexOf(<span class="hljs-string">"?"</span>))
+        }
+        <span class="hljs-keyword">return</span> request_path
+    }
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">add_stryke</span><span class="hljs-params">( in_str )</span>{</span>
+        <span class="hljs-keyword">var</span> stryke = <span class="hljs-string">""</span>
+        stryke = stryke+<span class="hljs-string">"&lt;script&gt;"</span>
+        stryke = stryke+    <span class="hljs-string">"var phantomatic = true;"</span>
+        stryke = stryke+<span class="hljs-string">"&lt;/script&gt;"</span>
+        in_str = in_str.replace(<span class="hljs-string">"&lt;/head&gt;"</span>, stryke+<span class="hljs-string">"&lt;/head&gt;"</span>)
+        <span class="hljs-keyword">return</span> in_str
+    }
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">create_combined_assets</span><span class="hljs-params">(optimizer, assets_combination, source_paths)</span>{</span>
+        <span class="hljs-keyword">var</span> target_merge=<span class="hljs-string">""</span>;
+        <span class="hljs-keyword">if</span>( assets_combination.append ){
+            <span class="hljs-keyword">for</span>( target_merge <span class="hljs-keyword">in</span> assets_combination.append ){
+                <span class="hljs-keyword">if</span>( target_merge.length &gt; <span class="hljs-number">1</span> ){
+                    <span class="hljs-keyword">var</span> asset_deps = assets_combination.append[target_merge];
+                    optimizer.merge_files(target_merge, asset_deps, source_paths);
+                    grunt.verbose.ok(<span class="hljs-string">"merged "</span>+target_merge+<span class="hljs-string">""</span>)
+                }
+            }
+        }
+        <span class="hljs-keyword">if</span>( assets_combination.prepend ){
+            <span class="hljs-keyword">for</span>( target_merge <span class="hljs-keyword">in</span> assets_combination.prepend ){
+                <span class="hljs-keyword">if</span>( target_merge.length &gt; <span class="hljs-number">1</span> ){
+                    <span class="hljs-keyword">var</span> asset_deps = assets_combination.prepend[target_merge];
+                    optimizer.merge_files(target_merge, asset_deps, source_paths);
+                    grunt.verbose.ok(<span class="hljs-string">"merged "</span>+target_merge+<span class="hljs-string">""</span>)
+                }
+            }
+        }
+    }
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">execute_phantomjs</span><span class="hljs-params">(args, cb)</span>{</span>
+        <span class="hljs-keyword">var</span> childArgs = [ <span class="hljs-string">'--load-images=false'</span> ];
+        <span class="hljs-keyword">for</span>(<span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> args )childArgs.push(args[n])
+
+        grunt.verbose.writeln(phantomjs.path+<span class="hljs-string">" "</span>+childArgs.join(<span class="hljs-string">" "</span>));
+
+        grunt.log.ok(<span class="hljs-string">"Starting PhantomJS... "</span>);
+        <span class="hljs-keyword">return</span> childProcess.execFile(phantomjs.path, childArgs, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err, stdout, stderr)</span> {</span>
+            grunt.log.ok(<span class="hljs-string">"... Done PhantomJS"</span>);
+            <span class="hljs-keyword">if</span>( stderr != <span class="hljs-string">""</span> ){
+                console.log(stderr)
+                grunt.log.error(<span class="hljs-string">"... PhantomJS failed"</span>);
+            }
+            cb(err, stdout, stderr);
+        });
+    }
+
+
+
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">remove_stryke</span><span class="hljs-params">( in_str )</span>{</span>
+        <span class="hljs-keyword">var</span> stryke = <span class="hljs-string">""</span>
+        stryke = stryke+<span class="hljs-string">"&lt;script&gt;"</span>
+        stryke = stryke+    <span class="hljs-string">"var phantomatic = true;"</span>
+        stryke = stryke+<span class="hljs-string">"&lt;/script&gt;"</span>
+        in_str = in_str.replace(stryke+<span class="hljs-string">""</span>, <span class="hljs-string">""</span>)
+        <span class="hljs-keyword">return</span> in_str
+    }
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">remove_rjs_trace</span><span class="hljs-params">( in_str )</span>{</span>
+        <span class="hljs-keyword">var</span> ptn = <span class="hljs-regexp">/&lt;script type="text\/javascript" charset="utf-8" async="" data-requirecontext="_"[^&gt;]*&gt;&lt;\/script&gt;/g</span>
+        in_str = in_str.replace(ptn,<span class="hljs-string">""</span>);
+        <span class="hljs-keyword">return</span> in_str
+    }
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">extract_stryke_trace</span><span class="hljs-params">( in_str )</span>{</span>
+        <span class="hljs-keyword">var</span> ptn = <span class="hljs-regexp">/&lt;div id="stryke_trace"&gt;([^&lt;]*?)&lt;\/div&gt;/gi</span>
+        <span class="hljs-keyword">var</span> retour = []
+        <span class="hljs-keyword">var</span> trace = in_str.match(ptn);
+        <span class="hljs-keyword">if</span>( trace != <span class="hljs-literal">null</span> &amp;&amp; trace.length &gt; <span class="hljs-number">0</span> ){
+            trace=trace[<span class="hljs-number">0</span>]
+            trace=trace.substring( (<span class="hljs-string">'&lt;div id="stryke_trace"&gt;'</span>).length )
+            trace=trace.substring( <span class="hljs-number">0</span>, trace.length-(<span class="hljs-string">'&lt;/div&gt;'</span>).length )
+            trace=trace.split(<span class="hljs-regexp">/\r\n|\r|\n/</span>);
+            retour = trace;
+        }
+        <span class="hljs-keyword">return</span> retour
+    }
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">remove_stryke_trace</span><span class="hljs-params">( in_str )</span>{</span>
+        <span class="hljs-keyword">var</span> ptn = <span class="hljs-regexp">/&lt;div id="stryke_trace"&gt;([^&lt;]*?)&lt;\/div&gt;/gi</span>
+        <span class="hljs-keyword">var</span> trace=in_str.match(ptn);
+        <span class="hljs-keyword">if</span>( trace != <span class="hljs-literal">null</span> &amp;&amp; trace.length &gt; <span class="hljs-number">0</span> ){
+            in_str = in_str.replace(trace[<span class="hljs-number">0</span>],<span class="hljs-string">""</span>)
+        }
+        <span class="hljs-keyword">return</span> in_str
+    }
+};</pre></div>
+        
+      
+      <div class="fleur">h</div>
+    </div>
+  </div>
+</body>
+</html>
