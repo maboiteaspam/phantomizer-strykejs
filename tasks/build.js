@@ -49,7 +49,7 @@ module.exports = function(grunt) {
         var user_config = grunt.config();
 
         var meta_manager = new meta_factory( wd, meta_dir );
-        var optimizer = new optimizer_factory(meta_manager, config);
+        var optimizer = new optimizer_factory(meta_manager, config, grunt);
         var router = new router_factory(user_config.routing);
 
         var done = this.async();
