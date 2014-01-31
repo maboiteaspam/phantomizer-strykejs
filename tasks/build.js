@@ -9,6 +9,7 @@ module.exports = function(grunt) {
     var fs              = require("fs");
     var connect         = require('connect');
     var http            = require('http');
+    var path            = require('path');
 
     var meta_factory = ph_libutil.meta;
 
@@ -166,7 +167,6 @@ module.exports = function(grunt) {
         router.load(function(){
 
             var finish = function(res){
-                // return;
                 if( res == true ){
                     grunt.log.ok()
                     done(true);
@@ -176,27 +176,28 @@ module.exports = function(grunt) {
                 }
             }
 
-            var raw_urls = grunt.file.readJSON(urls_file);
-            urls_file = run_dir+"tmp/phantomjs-urls.json";
-            grunt.file.mkdir(run_dir+"tmp")
+            // fetch urls to build
+            var raw_urls = grunt.file.readJSON(urls_file)
+            grunt.log.ok("URL Count "+raw_urls.length);
+
+            var strykejs_urls_file = run_dir+"/tmp/strykejs-urls.json";
+            grunt.file.mkdir( path.dirname(strykejs_urls_file) )
             for( var n in raw_urls ){
                 raw_urls[n].in_request = "http://localhost:"+port+raw_urls[n].in_request+"";
             }
-            grunt.file.write(urls_file, JSON.stringify(raw_urls));
+            grunt.file.write(strykejs_urls_file, JSON.stringify(raw_urls));
 
             var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper2.js';
-            execute_phantomjs([wrapper, urls_file], function(err, stdout, stderr){
+            execute_phantomjs([wrapper, strykejs_urls_file], function(err, stdout, stderr){
                 wserver.close();
                 wsserver.close();
 
-                // console.log(stdout)
-
+                grunt.file.delete(strykejs_urls_file);
                 //-
-                var urls = grunt.file.readJSON(urls_file);
-                for( var n in urls ){
-                    var in_request = urls[n].in_request;
-                    var meta_file = urls[n].meta_file;
-                    var out_file = urls[n].out_file;
+                for( var n in raw_urls ){
+                    var in_request = raw_urls[n].in_request;
+                    var meta_file = raw_urls[n].meta_file;
+                    var out_file = raw_urls[n].out_file;
                     var deps = [];
 
                     var retour = grunt.file.read(out_file);
@@ -208,9 +209,9 @@ module.exports = function(grunt) {
                     var trace = extract_stryke_trace( retour )
                     retour = remove_stryke_trace( retour )
                     if( trace.length > 0 ){
-                        trace.unshift(in_request)
+                        trace.unshift(in_request);
                         for(var n in trace){
-                            deps.push(req_logs[trace[n]])
+                            deps.push(req_logs[trace[n]]);
                         }
                     }
 
