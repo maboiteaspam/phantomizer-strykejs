@@ -127,7 +127,7 @@ module.exports = function(grunt) {
 
 
 
-    grunt.registerMultiTask("phantomizer-strykejs-builder2", "Builds html dependencies of a stryke file", function () {
+    grunt.registerMultiTask("phantomizer-strykejs-project-builder", "Builds html dependencies of a stryke file", function () {
 
         var wd = process.cwd();
 
@@ -231,12 +231,12 @@ module.exports = function(grunt) {
                     // create a cache entry, so that later we can regen or check freshness
                     var entry = meta_manager.create(deps);
 
-                    // save phantomizer-html-builder2 task options
-                    var opt = grunt.config.get("phantomizer-html-builder2");
+                    // save phantomizer-strykejs-project-builder task options
+                    var opt = grunt.config.get("phantomizer-strykejs-project-builder");
                     if(!opt[current_grunt_target]) opt[current_grunt_target] = {};
                     if(!opt[current_grunt_target].options) opt[current_grunt_target].options = {};
                     opt[current_grunt_target].options.url = in_request;
-                    entry.require_task("phantomizer-html-builder2:"+current_grunt_target, opt[current_grunt_target]);
+                    entry.require_task("phantomizer-strykejs-project-builder:"+current_grunt_target, opt[current_grunt_target]);
 
                     entry.save(meta_file, function(err){
                         grunt.file.write(out_file, retour)
