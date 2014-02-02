@@ -155,7 +155,7 @@ module.exports = function(grunt) {
         var user_config = grunt.config();
 
         var meta_manager = new meta_factory( wd, meta_dir );
-        var optimizer = new optimizer_factory(meta_manager, config);
+        var optimizer = new optimizer_factory(meta_manager, config, grunt);
         var router = new router_factory(config.routing);
 
         var req_logs = {}
