@@ -74,7 +74,7 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
         <span class="hljs-keyword">var</span> user_config = grunt.config();
 
         <span class="hljs-keyword">var</span> meta_manager = <span class="hljs-keyword">new</span> meta_factory( wd, meta_dir );
-        <span class="hljs-keyword">var</span> optimizer = <span class="hljs-keyword">new</span> optimizer_factory(meta_manager, config);
+        <span class="hljs-keyword">var</span> optimizer = <span class="hljs-keyword">new</span> optimizer_factory(meta_manager, config, grunt);
         <span class="hljs-keyword">var</span> router = <span class="hljs-keyword">new</span> router_factory(user_config.routing);
 
         <span class="hljs-keyword">var</span> done = <span class="hljs-keyword">this</span>.async();
@@ -215,7 +215,7 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
         <span class="hljs-keyword">var</span> user_config = grunt.config();
 
         <span class="hljs-keyword">var</span> meta_manager = <span class="hljs-keyword">new</span> meta_factory( wd, meta_dir );
-        <span class="hljs-keyword">var</span> optimizer = <span class="hljs-keyword">new</span> optimizer_factory(meta_manager, config);
+        <span class="hljs-keyword">var</span> optimizer = <span class="hljs-keyword">new</span> optimizer_factory(meta_manager, config, grunt);
         <span class="hljs-keyword">var</span> router = <span class="hljs-keyword">new</span> router_factory(config.routing);
 
         <span class="hljs-keyword">var</span> req_logs = {}
