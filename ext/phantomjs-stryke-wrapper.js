@@ -31,27 +31,32 @@ function retrieve_page(target_url, cb){
         console.error(msgStack.join('\n'));
     };
 
-    page.onLoadFinished = function (status) {
-        var interval = null;
-        interval = window.setInterval(function () {
-            var a = page.evaluate(function (c) {
-                var a = document.getElementsByTagName("html")[0].getAttribute("class");
-                if (a) {
-                    if (a.indexOf("stryked") != -1 ){
-                        return document.getElementsByTagName("html")[0].outerHTML;
-                    }
-                }
-                return "";
-            });
-            if( a != "" ){
-                cb(true,target_url, a);
-                page.close();
-                clearInterval(interval);
-            }
-        }, 10);
+  page.onLoadFinished = function (status) {
+    console.log('load done...'+target_url);
+    var interval = null;
+    var evaluate = function(){
+      var a = page.evaluate(function (c) {
+        var a = document.getElementsByTagName("html")[0].getAttribute("class");
+        if (a) {
+          if (a.indexOf("stryked") != -1 ){
+            return document.getElementsByTagName("html")[0].outerHTML;
+          }
+        }
+        return "";
+      });
+      if( a != "" ){
+        console.log('evaluate done...'+target_url);
+        cb(true,target_url, a);
+        page.close();
+      }else{
+        interval = window.setTimeout(evaluate,10);
+      }
     };
+    window.setTimeout(evaluate,10);
+  };
 
 
+  console.log('open...'+target_url);
     page.open(target_url, function (b) {
         if( b !== "success"){
             console.log("Unable to access network "+target_url);
