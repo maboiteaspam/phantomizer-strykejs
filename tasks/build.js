@@ -14,8 +14,7 @@ module.exports = function(grunt) {
     var router_factory      = ph_libutil.router;
     var file_utils          = ph_libutil.file_utils;
     var optimizer_factory   = ph_libutil.optimizer;
-
-  var get_webserver = require("./webserver.js")(grunt);
+  var webserver_factory = ph_libutil.webserver;
 
     grunt.registerMultiTask("phantomizer-strykejs-builder", "Builds html dependencies of a stryke file", function () {
 
@@ -55,9 +54,17 @@ module.exports = function(grunt) {
             // check if a cache entry exists, if it is fresh, just serve it
             if( meta_manager.is_fresh(meta_file) == false ){
 
-                var req_logs = {}
-                var app = get_webserver(router, optimizer, options, req_logs);
-                var wserver = http.createServer(app).listen(port);
+              // starts a new phantomizer webserver
+              var grunt_config = grunt.config();
+              grunt_config.web_paths = options.paths;
+              var webserver = new webserver_factory(router,optimizer,meta_manager,process.cwd(), grunt_config, grunt);
+              webserver.is_in_build_process(true);
+              webserver.enable_query_logs(true);
+              webserver.is_phantom(false);
+              webserver.enable_dashboard(false);
+              webserver.enable_build(false);
+              webserver.enable_assets_inject(true);
+              webserver.start(options.port, options.ssl_port);
 
                 var finish = function(res){
                     // return;
@@ -78,7 +85,9 @@ module.exports = function(grunt) {
                 var target_url = "http://localhost:"+port+in_request;
                 var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper.js';
                 execute_phantomjs([wrapper, target_url, out_file],function(err, stdout, stderr){
-                    wserver.close();
+                  webserver.stop();
+                  var req_logs = webserver.get_query_logs();
+                  webserver.clear_query_logs();
 
 
                     var retour = grunt.file.read(out_file);
@@ -156,10 +165,17 @@ module.exports = function(grunt) {
         var optimizer = new optimizer_factory(meta_manager, config, grunt);
         var router = new router_factory(config.routing);
 
-        var req_logs = {}
-        var app = get_webserver(router, optimizer, options, req_logs);
-        var wserver = http.createServer(app).listen(port);
-        var wsserver = http.createServer(app).listen(ssl_port);
+      // starts a new phantomizer webserver
+      var grunt_config = grunt.config();
+      grunt_config.web_paths = options.paths;
+      var webserver = new webserver_factory(router,optimizer,meta_manager,process.cwd(), grunt_config, grunt);
+      webserver.is_in_build_process(true);
+      webserver.enable_query_logs(true);
+      webserver.is_phantom(false);
+      webserver.enable_dashboard(false);
+      webserver.enable_build(false);
+      webserver.enable_assets_inject(true);
+      webserver.start(options.port, options.ssl_port);
 
         var done = this.async();
         router.load(function(){
@@ -187,8 +203,9 @@ module.exports = function(grunt) {
 
             var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper2.js';
             execute_phantomjs([wrapper, strykejs_urls_file], function(err, stdout, stderr){
-                wserver.close();
-                wsserver.close();
+              webserver.stop();
+              var req_logs = webserver.get_query_logs();
+              webserver.clear_query_logs();
 
                 grunt.file.delete(strykejs_urls_file);
                 //-
@@ -237,7 +254,7 @@ module.exports = function(grunt) {
                     entry.require_task("phantomizer-strykejs-project-builder:"+current_grunt_target, opt[current_grunt_target]);
 
                     entry.save(meta_file, function(err){
-                        grunt.file.write(out_file, retour)
+                        grunt.file.write(out_file, retour);
                     })
                 }
                 finish(true)
@@ -270,10 +287,10 @@ module.exports = function(grunt) {
 
 
     function remove_stryke( in_str ){
-        var stryke = ""
-        stryke = stryke+"<script>"
-        stryke = stryke+    "var phantomatic = true;"
-        stryke = stryke+"</script>"
+        var stryke = "";
+        stryke = stryke+"<script>";
+        stryke = stryke+    "var phantomatic = true;";
+        stryke = stryke+"</script>";
         in_str = in_str.replace(stryke+"", "")
         return in_str
     }
