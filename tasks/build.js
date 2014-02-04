@@ -55,9 +55,7 @@ module.exports = function(grunt) {
       if( meta_manager.is_fresh(meta_file) == false ){
 
         // starts a new phantomizer webserver
-        var grunt_config = grunt.config();
-        grunt_config.web_paths = options.paths;
-        var webserver = new webserver_factory(router,optimizer,meta_manager,process.cwd(), grunt_config, grunt);
+        var webserver = new webserver_factory(router,optimizer,meta_manager,grunt, options.paths);
         webserver.is_in_build_process(true);
         webserver.enable_query_logs(true);
         webserver.is_phantom(false);
@@ -166,9 +164,7 @@ module.exports = function(grunt) {
     var router = new router_factory(config.routing);
 
     // starts a new phantomizer webserver
-    var grunt_config = grunt.config();
-    grunt_config.web_paths = options.paths;
-    var webserver = new webserver_factory(router,optimizer,meta_manager,process.cwd(), grunt_config, grunt);
+    var webserver = new webserver_factory(router,optimizer,meta_manager,grunt, options.paths);
     webserver.is_in_build_process(true);
     webserver.enable_query_logs(true);
     webserver.is_phantom(false);
