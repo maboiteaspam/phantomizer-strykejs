@@ -187,7 +187,13 @@ module.exports = function(grunt) {
       }
 
       // fetch urls to build
-      var raw_urls = grunt.file.readJSON(urls_file)
+      var raw_urls = grunt.file.readJSON(urls_file);
+
+      if( raw_urls.length == 0 ){
+        finish(true);
+        return;
+      }
+
       grunt.log.ok("URL Count "+raw_urls.length);
 
       var strykejs_urls_file = run_dir+"/tmp/strykejs-urls.json";
