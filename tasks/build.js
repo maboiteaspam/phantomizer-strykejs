@@ -171,9 +171,17 @@ module.exports = function(grunt) {
     webserver.enable_dashboard(false);
     webserver.enable_build(false);
     webserver.enable_assets_inject(true);
-    webserver.start(options.port, options.ssl_port);
 
     var done = this.async();
+
+    // fetch urls to build
+    var raw_urls = grunt.file.readJSON(urls_file);
+
+    if( raw_urls.length == 0 ){
+      done(true);
+      return;
+    }
+
     router.load(function(){
 
       var finish = function(res){
@@ -186,14 +194,6 @@ module.exports = function(grunt) {
         }
       }
 
-      // fetch urls to build
-      var raw_urls = grunt.file.readJSON(urls_file);
-
-      if( raw_urls.length == 0 ){
-        finish(true);
-        return;
-      }
-
       grunt.log.ok("URL Count "+raw_urls.length);
 
       var strykejs_urls_file = run_dir+"/tmp/strykejs-urls.json";
@@ -203,6 +203,7 @@ module.exports = function(grunt) {
       }
       grunt.file.write(strykejs_urls_file, JSON.stringify(raw_urls));
 
+      webserver.start(options.port, options.ssl_port);
       var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper2.js';
       execute_phantomjs([wrapper, strykejs_urls_file], function(err, stdout, stderr){
         webserver.stop();
