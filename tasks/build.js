@@ -65,13 +65,16 @@ module.exports = function(grunt) {
         webserver.start(options.port, options.ssl_port);
 
         var finish = function(res){
-          // return;
           if( res == true ){
-            grunt.log.ok()
-            done(true);
+            grunt.log.ok();
+            webserver.stop(function(){
+              done(true);
+            });
           }else{
-            grunt.log.error(res)
-            done(false);
+            grunt.log.error(res);
+            webserver.stop(function(){
+              done(false);
+            });
           }
         }
 
@@ -83,7 +86,6 @@ module.exports = function(grunt) {
         var target_url = "http://localhost:"+port+in_request;
         var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper.js';
         execute_phantomjs([wrapper, target_url, out_file],function(err, stdout, stderr){
-          webserver.stop();
           var req_logs = webserver.get_query_logs();
           webserver.clear_query_logs();
 
@@ -186,11 +188,15 @@ module.exports = function(grunt) {
 
       var finish = function(res){
         if( res == true ){
-          grunt.log.ok()
-          done(true);
+          grunt.log.ok();
+          webserver.stop(function(){
+            done(true);
+          });
         }else{
-          grunt.log.error(res)
-          done(false);
+          grunt.log.error(res);
+          webserver.stop(function(){
+            done(false);
+          });
         }
       }
 
@@ -206,7 +212,6 @@ module.exports = function(grunt) {
       webserver.start(options.port, options.ssl_port);
       var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper2.js';
       execute_phantomjs([wrapper, strykejs_urls_file], function(err, stdout, stderr){
-        webserver.stop();
         var req_logs = webserver.get_query_logs();
         webserver.clear_query_logs();
 
