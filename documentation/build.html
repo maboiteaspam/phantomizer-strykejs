@@ -89,9 +89,7 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
         <p>starts a new phantomizer webserver</p>
 
         
-          <div class='highlight'><pre>        <span class="hljs-keyword">var</span> grunt_config = grunt.config();
-        grunt_config.web_paths = options.paths;
-        <span class="hljs-keyword">var</span> webserver = <span class="hljs-keyword">new</span> webserver_factory(router,optimizer,meta_manager,process.cwd(), grunt_config, grunt);
+          <div class='highlight'><pre>        <span class="hljs-keyword">var</span> webserver = <span class="hljs-keyword">new</span> webserver_factory(router,optimizer,meta_manager,grunt, options.paths);
         webserver.is_in_build_process(<span class="hljs-literal">true</span>);
         webserver.enable_query_logs(<span class="hljs-literal">true</span>);
         webserver.is_phantom(<span class="hljs-literal">false</span>);
@@ -100,19 +98,17 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
         webserver.enable_assets_inject(<span class="hljs-literal">true</span>);
         webserver.start(options.port, options.ssl_port);
 
-        <span class="hljs-keyword">var</span> finish = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(res)</span>{</span></pre></div>
-        
-      
-        
-        <p>return;</p>
-
-        
-          <div class='highlight'><pre>          <span class="hljs-keyword">if</span>( res == <span class="hljs-literal">true</span> ){
-            grunt.log.ok()
-            done(<span class="hljs-literal">true</span>);
+        <span class="hljs-keyword">var</span> finish = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(res)</span>{</span>
+          <span class="hljs-keyword">if</span>( res == <span class="hljs-literal">true</span> ){
+            grunt.log.ok();
+            webserver.stop(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
+              done(<span class="hljs-literal">true</span>);
+            });
           }<span class="hljs-keyword">else</span>{
-            grunt.log.error(res)
-            done(<span class="hljs-literal">false</span>);
+            grunt.log.error(res);
+            webserver.stop(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
+              done(<span class="hljs-literal">false</span>);
+            });
           }
         }
 
@@ -124,7 +120,6 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
         <span class="hljs-keyword">var</span> target_url = <span class="hljs-string">"http://localhost:"</span>+port+in_request;
         <span class="hljs-keyword">var</span> wrapper = __dirname+<span class="hljs-string">'/../ext/phantomjs-stryke-wrapper.js'</span>;
         execute_phantomjs([wrapper, target_url, out_file],<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err, stdout, stderr)</span>{</span>
-          webserver.stop();
           <span class="hljs-keyword">var</span> req_logs = webserver.get_query_logs();
           webserver.clear_query_logs();
 
@@ -197,6 +192,7 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
   });
 
 
+  <span class="hljs-keyword">var</span> ProgressBar = <span class="hljs-built_in">require</span>(<span class="hljs-string">'../node_modules/progress/index.js'</span>);
 
   grunt.registerMultiTask(<span class="hljs-string">"phantomizer-strykejs-project-builder"</span>, <span class="hljs-string">"Builds html dependencies of a stryke file"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
 
@@ -212,6 +208,7 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
       paths:[],
       scripts:<span class="hljs-literal">null</span>,
       css:<span class="hljs-literal">null</span>,
+      concurrent_request:<span class="hljs-number">20</span>,
       log:<span class="hljs-literal">false</span>
     });
     <span class="hljs-keyword">var</span> run_dir     = options.run_dir;
@@ -234,36 +231,57 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
         <p>starts a new phantomizer webserver</p>
 
         
-          <div class='highlight'><pre>    <span class="hljs-keyword">var</span> grunt_config = grunt.config();
-    grunt_config.web_paths = options.paths;
-    <span class="hljs-keyword">var</span> webserver = <span class="hljs-keyword">new</span> webserver_factory(router,optimizer,meta_manager,process.cwd(), grunt_config, grunt);
+          <div class='highlight'><pre>    <span class="hljs-keyword">var</span> webserver = <span class="hljs-keyword">new</span> webserver_factory(router,optimizer,meta_manager,grunt, options.paths);
     webserver.is_in_build_process(<span class="hljs-literal">true</span>);
     webserver.enable_query_logs(<span class="hljs-literal">true</span>);
     webserver.is_phantom(<span class="hljs-literal">false</span>);
     webserver.enable_dashboard(<span class="hljs-literal">false</span>);
     webserver.enable_build(<span class="hljs-literal">false</span>);
     webserver.enable_assets_inject(<span class="hljs-literal">true</span>);
-    webserver.start(options.port, options.ssl_port);
 
-    <span class="hljs-keyword">var</span> done = <span class="hljs-keyword">this</span>.async();
-    router.load(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
-
-      <span class="hljs-keyword">var</span> finish = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(res)</span>{</span>
-        <span class="hljs-keyword">if</span>( res == <span class="hljs-literal">true</span> ){
-          grunt.log.ok()
-          done(<span class="hljs-literal">true</span>);
-        }<span class="hljs-keyword">else</span>{
-          grunt.log.error(res)
-          done(<span class="hljs-literal">false</span>);
-        }
-      }</pre></div>
+    <span class="hljs-keyword">var</span> done = <span class="hljs-keyword">this</span>.async();</pre></div>
         
       
         
         <p>fetch urls to build</p>
 
         
-          <div class='highlight'><pre>      <span class="hljs-keyword">var</span> raw_urls = grunt.file.readJSON(urls_file)
+          <div class='highlight'><pre>    <span class="hljs-keyword">var</span> raw_urls = grunt.file.readJSON(urls_file);
+
+    <span class="hljs-keyword">if</span>( raw_urls.length == <span class="hljs-number">0</span> ){
+      done(<span class="hljs-literal">true</span>);
+      <span class="hljs-keyword">return</span>;
+    }</pre></div>
+        
+      
+        
+        <p>initialize a progress bar</p>
+
+        
+          <div class='highlight'><pre>    <span class="hljs-keyword">var</span> bar = <span class="hljs-keyword">new</span> ProgressBar(<span class="hljs-string">' done=[:current/:total] elapsed=[:elapseds] sprint=[:percent] eta=[:etas] [:bar]'</span>, {
+      complete: <span class="hljs-string">'#'</span>
+      , incomplete: <span class="hljs-string">'-'</span>
+      , width: <span class="hljs-number">80</span>
+      , total: raw_urls.length
+    });
+
+
+    router.load(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
+
+      <span class="hljs-keyword">var</span> finish = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(res)</span>{</span>
+        <span class="hljs-keyword">if</span>( res == <span class="hljs-literal">true</span> ){
+          grunt.log.ok();
+          webserver.stop(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
+            done(<span class="hljs-literal">true</span>);
+          });
+        }<span class="hljs-keyword">else</span>{
+          grunt.log.error(res);
+          webserver.stop(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
+            done(<span class="hljs-literal">false</span>);
+          });
+        }
+      }
+
       grunt.log.ok(<span class="hljs-string">"URL Count "</span>+raw_urls.length);
 
       <span class="hljs-keyword">var</span> strykejs_urls_file = run_dir+<span class="hljs-string">"/tmp/strykejs-urls.json"</span>;
@@ -273,9 +291,9 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
       }
       grunt.file.write(strykejs_urls_file, <span class="hljs-built_in">JSON</span>.stringify(raw_urls));
 
+      webserver.start(options.port, options.ssl_port);
       <span class="hljs-keyword">var</span> wrapper = __dirname+<span class="hljs-string">'/../ext/phantomjs-stryke-wrapper2.js'</span>;
-      execute_phantomjs([wrapper, strykejs_urls_file], <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err, stdout, stderr)</span>{</span>
-        webserver.stop();
+      <span class="hljs-keyword">var</span> phantomjsprocess = execute_phantomjs([wrapper, strykejs_urls_file, options.concurrent_request], <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err, stdout, stderr)</span>{</span>
         <span class="hljs-keyword">var</span> req_logs = webserver.get_query_logs();
         webserver.clear_query_logs();
 
@@ -363,9 +381,42 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
           })
         }
         finish(<span class="hljs-literal">true</span>)
-      }).stdout.on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
-          console.log(data.trim())
-        });
+      });
+      phantomjsprocess.stdout
+        .on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
+          data = data.trim();
+          grunt.verbose.writeln(data);
+        })</pre></div>
+        
+      
+        
+        <p>having some difficulties to pass phantomjs errors to stderr,
+so listens to stdout for errors</p>
+
+        
+          <div class='highlight'><pre>        .on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
+          data = data.trim();
+          <span class="hljs-keyword">if</span>( data.match(<span class="hljs-regexp">/^(ERROR: )/</span>) ){
+            grunt.log.writeln(<span class="hljs-string">"\n"</span>+data);
+          }
+        })</pre></div>
+        
+      
+        
+        <p>update progress bar</p>
+
+        
+          <div class='highlight'><pre>        .on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
+          data = data.trim();
+          <span class="hljs-keyword">var</span> matches = data.match(<span class="hljs-regexp">/evaluate (done|failed)/</span>);
+          <span class="hljs-keyword">if</span>( matches &amp;&amp; matches.length ){
+            <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> ii=<span class="hljs-number">1</span>;ii&lt;matches.length;ii++ ){
+              bar.tick();
+              grunt.verbose.write(<span class="hljs-string">"\n"</span>);
+            }
+          }
+        })
+      ;
 
     });
   });
@@ -381,7 +432,7 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
     <span class="hljs-keyword">return</span> childProcess.execFile(phantomjs.path, childArgs, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err, stdout, stderr)</span> {</span>
       grunt.log.ok(<span class="hljs-string">"... Done PhantomJS"</span>);
       <span class="hljs-keyword">if</span>( stderr != <span class="hljs-string">""</span> ){
-        console.log(stderr)
+        console.error(stderr)
         grunt.log.error(<span class="hljs-string">"... PhantomJS failed"</span>);
       }
       cb(err, stdout, stderr);
