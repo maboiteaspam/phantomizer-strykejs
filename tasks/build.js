@@ -287,18 +287,21 @@ module.exports = function(grunt) {
         // so listens to stdout for errors
         .on('data', function (data) {
           data = data.trim();
-          if( data.match(/^(ERROR: )/) ){
+          if( data.match(/(ERROR: )/) ){
             grunt.log.writeln("\n"+data);
           }
         })
         // update progress bar
         .on('data', function (data) {
           data = data.trim();
-          var matches = data.match(/evaluate (done|failed)/);
-          if( matches && matches.length ){
-            for( var ii=1;ii<matches.length;ii++ ){
-              bar.tick();
-              grunt.verbose.write("\n");
+          var lines = data.split("\n");
+          for( var n in lines ){
+            var l = lines[n];
+            var matches = l.match(/evaluate (done|failed)/);
+            if( matches && matches.length ){
+              for( var ii=1;ii<matches.length;ii++ ){
+                bar.tick();
+              }
             }
           }
         })
