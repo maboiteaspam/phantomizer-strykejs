@@ -133,7 +133,7 @@ module.exports = function(grunt) {
   });
 
 
-  var ProgressBar = require('../node_modules/progress/index.js');
+  var ProgressBar = require('progress');
 
   grunt.registerMultiTask("phantomizer-strykejs-project-builder", "Builds html dependencies of a stryke file", function () {
 
