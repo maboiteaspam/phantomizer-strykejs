@@ -133,6 +133,7 @@ module.exports = function(grunt) {
   });
 
 
+  var ProgressBar = require('../node_modules/progress/index.js');
 
   grunt.registerMultiTask("phantomizer-strykejs-project-builder", "Builds html dependencies of a stryke file", function () {
 
@@ -148,6 +149,7 @@ module.exports = function(grunt) {
       paths:[],
       scripts:null,
       css:null,
+      concurrent_request:20,
       log:false
     });
     var run_dir     = options.run_dir;
@@ -184,6 +186,15 @@ module.exports = function(grunt) {
       return;
     }
 
+// initialize a progress bar
+    var bar = new ProgressBar(' done=[:current/:total] elapsed=[:elapseds] sprint=[:percent] eta=[:etas] [:bar]', {
+      complete: '#'
+      , incomplete: '-'
+      , width: 80
+      , total: raw_urls.length
+    });
+
+
     router.load(function(){
 
       var finish = function(res){
@@ -211,7 +222,7 @@ module.exports = function(grunt) {
 
       webserver.start(options.port, options.ssl_port);
       var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper2.js';
-      execute_phantomjs([wrapper, strykejs_urls_file], function(err, stdout, stderr){
+      var phantomjsprocess = execute_phantomjs([wrapper, strykejs_urls_file, options.concurrent_request], function(err, stdout, stderr){
         var req_logs = webserver.get_query_logs();
         webserver.clear_query_logs();
 
@@ -266,9 +277,32 @@ module.exports = function(grunt) {
           })
         }
         finish(true)
-      }).stdout.on('data', function (data) {
-          console.log(data.trim())
-        });
+      });
+      phantomjsprocess.stdout
+        .on('data', function (data) {
+          data = data.trim();
+          grunt.verbose.writeln(data);
+        })
+        // having some difficulties to pass phantomjs errors to stderr,
+        // so listens to stdout for errors
+        .on('data', function (data) {
+          data = data.trim();
+          if( data.match(/^(ERROR: )/) ){
+            grunt.log.writeln("\n"+data);
+          }
+        })
+        // update progress bar
+        .on('data', function (data) {
+          data = data.trim();
+          var matches = data.match(/evaluate (done|failed)/);
+          if( matches && matches.length ){
+            for( var ii=1;ii<matches.length;ii++ ){
+              bar.tick();
+              grunt.verbose.write("\n");
+            }
+          }
+        })
+      ;
 
     });
   });
@@ -284,7 +318,7 @@ module.exports = function(grunt) {
     return childProcess.execFile(phantomjs.path, childArgs, function(err, stdout, stderr) {
       grunt.log.ok("... Done PhantomJS");
       if( stderr != "" ){
-        console.log(stderr)
+        console.error(stderr)
         grunt.log.error("... PhantomJS failed");
       }
       cb(err, stdout, stderr);

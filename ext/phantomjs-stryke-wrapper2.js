@@ -1,20 +1,23 @@
-
+'use strict';
 
 var fs = require('fs');
-system = require("system");
-webpage = require("webpage");
+var system = require("system");
+var webpage = require("webpage");
+
+// the JSON urls to fetch and write
 var in_urls_file = system.args[1];
-
 var data = fs.read(in_urls_file).toString();
-
 var target_urls = JSON.parse(data);
 
-iterate(0,20,end_iterate,0);
+var concurrent_request = parseInt(system.args[2]);
+// fetches url with 20 concurrent requests
+iterate(0,concurrent_request,end_iterate,0);
 
 
 function end_iterate(offset,limit,results,cnt_success){
   console.log("done from:"+(offset-limit)+" to:"+offset+" success:"+cnt_success);
   if( results == false ){
+    console.log('\ncomplete\n');
     phantom.exit(0);
   }else{
     var index = offset-limit;
@@ -61,6 +64,8 @@ function iterate(offset,limit,cb,cnt_success){
 function retrieve_page(target_url, cb){
   var page = webpage.create();
 
+  var has_errors = false;
+
   page.onLoadStarted = function () {
     console.log('Start loading...'+target_url);
   };
@@ -70,6 +75,9 @@ function retrieve_page(target_url, cb){
   };
 
   page.onError = function(msg, trace) {
+    if(!has_errors){
+      msg = "\t"+target_url+"\n"+msg;
+    }
     var msgStack = ['ERROR: ' + msg];
     if (trace && trace.length) {
       msgStack.push('TRACE:');
@@ -78,24 +86,28 @@ function retrieve_page(target_url, cb){
       });
     }
     console.error(msgStack.join('\n'));
+    has_errors = true;
   };
 
   page.onLoadFinished = function (status) {
     console.log('load done...'+target_url);
     var interval = null;
     var evaluate = function(){
-      var a = page.evaluate(function (c) {
+      var html_content = page.evaluate(function () {
+        var content = "";
         var a = document.getElementsByTagName("html")[0].getAttribute("class");
-        if (a) {
-          if (a.indexOf("stryked") != -1 ){
-            return document.getElementsByTagName("html")[0].outerHTML;
-          }
+        if (a && a.indexOf("stryked") != -1 ){
+          content = document.getElementsByTagName("html")[0].outerHTML;
         }
-        return "";
+        return content;
       });
-      if( a != "" ){
-        console.log('evaluate done...'+target_url);
-        cb(true,target_url, a);
+      if( html_content != "" || has_errors ){
+        if( has_errors ){
+          console.log('evaluate failed...'+target_url);
+        }else{
+          console.log('evaluate done...'+target_url);
+        }
+        cb(has_errors, target_url, html_content);
         page.close();
       }else{
         interval = window.setTimeout(evaluate,10);
@@ -108,7 +120,7 @@ function retrieve_page(target_url, cb){
   console.log('open...'+target_url);
   page.open(target_url, function (b) {
     if( b !== "success"){
-      console.log("Unable to access network "+target_url);
+      console.error("Unable to access network "+target_url);
     }else{
       page.evaluate(function () {});
     }

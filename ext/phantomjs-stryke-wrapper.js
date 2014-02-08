@@ -11,16 +11,22 @@ retrieve_page(target_url, function(success,url,content){
 function retrieve_page(target_url, cb){
   var page = require("webpage").create();
 
+  var has_errors = false;
+
 
   page.onLoadStarted = function () {
     console.log('Start loading...'+target_url);
   };
 
   page.onConsoleMessage = function(msg, lineNum, sourceId) {
-    console.log('CONSOLE: ' + msg + ' (from line #' + lineNum + ' in "' + sourceId + '")');
+    msg = 'CONSOLE: ' + msg + ' (from line #' + lineNum + ' in "' + sourceId + '")';
+    console.log(msg);
   };
 
   page.onError = function(msg, trace) {
+    if(!has_errors){
+      msg = "\t"+target_url+"\n"+msg;
+    }
     var msgStack = ['ERROR: ' + msg];
     if (trace && trace.length) {
       msgStack.push('TRACE:');
@@ -29,24 +35,28 @@ function retrieve_page(target_url, cb){
       });
     }
     console.error(msgStack.join('\n'));
+    has_errors = true;
   };
 
   page.onLoadFinished = function (status) {
     console.log('load done...'+target_url);
     var interval = null;
     var evaluate = function(){
-      var a = page.evaluate(function (c) {
+      var html_content = page.evaluate(function () {
+        var content = "";
         var a = document.getElementsByTagName("html")[0].getAttribute("class");
-        if (a) {
-          if (a.indexOf("stryked") != -1 ){
-            return document.getElementsByTagName("html")[0].outerHTML;
-          }
+        if (a && a.indexOf("stryked") != -1 ){
+          content = document.getElementsByTagName("html")[0].outerHTML;
         }
-        return "";
+        return content;
       });
-      if( a != "" ){
-        console.log('evaluate done...'+target_url);
-        cb(true,target_url, a);
+      if( html_content != "" || has_errors ){
+        if( has_errors ){
+          console.log('evaluate failed...'+target_url);
+        }else{
+          console.log('evaluate done...'+target_url);
+        }
+        cb(has_errors,target_url, html_content);
         page.close();
       }else{
         interval = window.setTimeout(evaluate,10);
@@ -59,7 +69,7 @@ function retrieve_page(target_url, cb){
   console.log('open...'+target_url);
   page.open(target_url, function (b) {
     if( b !== "success"){
-      console.log("Unable to access network "+target_url);
+      console.error("Unable to access network "+target_url);
     }else{
       page.evaluate(function () {});
     }
