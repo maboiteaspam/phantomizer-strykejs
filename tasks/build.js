@@ -280,21 +280,11 @@ module.exports = function(grunt) {
       });
       phantomjsprocess.stdout
         .on('data', function (data) {
-          data = data.trim();
-          grunt.verbose.writeln(data);
-        })
-        // having some difficulties to pass phantomjs errors to stderr,
-        // so listens to stdout for errors
-        .on('data', function (data) {
-          data = data.trim();
-          if( data.match(/(ERROR: )/) ){
-            grunt.log.writeln("\n"+data);
-          }
+          grunt.verbose.writeln(data.trim());
         })
         // update progress bar
         .on('data', function (data) {
-          data = data.trim();
-          var lines = data.split("\n");
+          var lines = data.trim().split("\n");
           for( var n in lines ){
             var l = lines[n];
             var matches = l.match(/evaluate (done|failed)/);
@@ -305,6 +295,26 @@ module.exports = function(grunt) {
             }
           }
         })
+      ;
+      phantomjsprocess.stderr
+        .on('data', function (data) {
+          grunt.log.write("\n");
+          grunt.log.error(""+data.trim());
+        })
+        // update progress bar
+        .on('data', function (data) {
+          var lines = data.trim().split("\n");
+          for( var n in lines ){
+            var l = lines[n];
+            var matches = l.match(/evaluate (done|failed)/);
+            if( matches && matches.length ){
+              for( var ii=1;ii<matches.length;ii++ ){
+                bar.tick();
+              }
+            }
+          }
+        })
+      ;
       ;
 
     });
@@ -319,10 +329,10 @@ module.exports = function(grunt) {
 
     grunt.log.ok("Starting PhantomJS... ");
     return childProcess.execFile(phantomjs.path, childArgs, function(err, stdout, stderr) {
-      grunt.log.ok("... Done PhantomJS");
       if( stderr != "" ){
-        console.error(stderr)
         grunt.log.error("... PhantomJS failed");
+      }else{
+        grunt.log.ok("... PhantomJS succeed");
       }
       cb(err, stdout, stderr);
     });

@@ -74,6 +74,11 @@ function retrieve_page(target_url, cb){
     console.log('CONSOLE: ' + msg + ' (from line #' + lineNum + ' in "' + sourceId + '")');
   };
 
+
+  // monkey patch : https://github.com/ariya/phantomjs/issues/10150#issuecomment-28707859
+  console.error = function () {
+    require("system").stderr.write(Array.prototype.join.call(arguments, ' ') + '\n');
+  };
   page.onError = function(msg, trace) {
     if(!has_errors){
       msg = "\t"+target_url+"\n"+msg;
@@ -103,7 +108,7 @@ function retrieve_page(target_url, cb){
       });
       if( html_content != "" || has_errors ){
         if( has_errors ){
-          console.log('evaluate failed...'+target_url);
+          console.error('evaluate failed...'+target_url);
         }else{
           console.log('evaluate done...'+target_url);
         }
