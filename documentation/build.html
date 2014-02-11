@@ -192,7 +192,7 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
   });
 
 
-  <span class="hljs-keyword">var</span> ProgressBar = <span class="hljs-built_in">require</span>(<span class="hljs-string">'../node_modules/progress/index.js'</span>);
+  <span class="hljs-keyword">var</span> ProgressBar = <span class="hljs-built_in">require</span>(<span class="hljs-string">'progress'</span>);
 
   grunt.registerMultiTask(<span class="hljs-string">"phantomizer-strykejs-project-builder"</span>, <span class="hljs-string">"Builds html dependencies of a stryke file"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
 
@@ -384,21 +384,7 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
       });
       phantomjsprocess.stdout
         .on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
-          data = data.trim();
-          grunt.verbose.writeln(data);
-        })</pre></div>
-        
-      
-        
-        <p>having some difficulties to pass phantomjs errors to stderr,
-so listens to stdout for errors</p>
-
-        
-          <div class='highlight'><pre>        .on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
-          data = data.trim();
-          <span class="hljs-keyword">if</span>( data.match(<span class="hljs-regexp">/^(ERROR: )/</span>) ){
-            grunt.log.writeln(<span class="hljs-string">"\n"</span>+data);
-          }
+          grunt.verbose.writeln(data.trim());
         })</pre></div>
         
       
@@ -407,15 +393,42 @@ so listens to stdout for errors</p>
 
         
           <div class='highlight'><pre>        .on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
-          data = data.trim();
-          <span class="hljs-keyword">var</span> matches = data.match(<span class="hljs-regexp">/evaluate (done|failed)/</span>);
-          <span class="hljs-keyword">if</span>( matches &amp;&amp; matches.length ){
-            <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> ii=<span class="hljs-number">1</span>;ii&lt;matches.length;ii++ ){
-              bar.tick();
-              grunt.verbose.write(<span class="hljs-string">"\n"</span>);
+          <span class="hljs-keyword">var</span> lines = data.trim().split(<span class="hljs-string">"\n"</span>);
+          <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> lines ){
+            <span class="hljs-keyword">var</span> l = lines[n];
+            <span class="hljs-keyword">var</span> matches = l.match(<span class="hljs-regexp">/evaluate (done|failed)/</span>);
+            <span class="hljs-keyword">if</span>( matches &amp;&amp; matches.length ){
+              <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> ii=<span class="hljs-number">1</span>;ii&lt;matches.length;ii++ ){
+                bar.tick();
+              }
             }
           }
         })
+      ;
+      phantomjsprocess.stderr
+        .on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
+          grunt.log.write(<span class="hljs-string">"\n"</span>);
+          grunt.log.error(<span class="hljs-string">""</span>+data.trim());
+        })</pre></div>
+        
+      
+        
+        <p>update progress bar</p>
+
+        
+          <div class='highlight'><pre>        .on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(data)</span> {</span>
+          <span class="hljs-keyword">var</span> lines = data.trim().split(<span class="hljs-string">"\n"</span>);
+          <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> lines ){
+            <span class="hljs-keyword">var</span> l = lines[n];
+            <span class="hljs-keyword">var</span> matches = l.match(<span class="hljs-regexp">/evaluate (done|failed)/</span>);
+            <span class="hljs-keyword">if</span>( matches &amp;&amp; matches.length ){
+              <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> ii=<span class="hljs-number">1</span>;ii&lt;matches.length;ii++ ){
+                bar.tick();
+              }
+            }
+          }
+        })
+      ;
       ;
 
     });
@@ -430,10 +443,10 @@ so listens to stdout for errors</p>
 
     grunt.log.ok(<span class="hljs-string">"Starting PhantomJS... "</span>);
     <span class="hljs-keyword">return</span> childProcess.execFile(phantomjs.path, childArgs, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err, stdout, stderr)</span> {</span>
-      grunt.log.ok(<span class="hljs-string">"... Done PhantomJS"</span>);
       <span class="hljs-keyword">if</span>( stderr != <span class="hljs-string">""</span> ){
-        console.error(stderr)
         grunt.log.error(<span class="hljs-string">"... PhantomJS failed"</span>);
+      }<span class="hljs-keyword">else</span>{
+        grunt.log.ok(<span class="hljs-string">"... PhantomJS succeed"</span>);
       }
       cb(err, stdout, stderr);
     });
