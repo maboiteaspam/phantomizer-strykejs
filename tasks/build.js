@@ -41,7 +41,8 @@ module.exports = function(grunt) {
 
     var done = this.async();
 // get phantomizer main instance
-    var phantomizer = ph_libutil.get("main");
+    var Phantomizer = ph_libutil.Phantomizer;
+    var phantomizer = new Phantomizer(process.cwd(),grunt);
     var meta_manager = phantomizer.get_meta_manager();
     // check if a cache entry exists, if it is fresh, just serve it
     if( meta_manager.is_fresh(meta_file) == false ){
@@ -197,7 +198,8 @@ module.exports = function(grunt) {
 
 
 // get phantomizer main instance
-    var phantomizer = ph_libutil.get("main");
+    var Phantomizer = ph_libutil.Phantomizer;
+    var phantomizer = new Phantomizer(process.cwd(),grunt);
     var meta_manager = phantomizer.get_meta_manager();
     phantomizer.create_webserver(options.paths,function(webserver){
 
