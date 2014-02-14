@@ -9,12 +9,7 @@ module.exports = function(grunt) {
   var http            = require('http');
   var path            = require('path');
 
-  var meta_factory = ph_libutil.meta;
-
-  var router_factory      = ph_libutil.router;
   var file_utils          = ph_libutil.file_utils;
-  var optimizer_factory   = ph_libutil.optimizer;
-  var webserver_factory = ph_libutil.webserver;
 
   grunt.registerMultiTask("phantomizer-strykejs-builder", "Builds html dependencies of a stryke file", function () {
 
@@ -28,7 +23,6 @@ module.exports = function(grunt) {
       out_file:null,
       paths:null,
       meta_file:null,
-      meta_dir:null,
       scripts:null,
       css:null,
       log:false
@@ -39,23 +33,21 @@ module.exports = function(grunt) {
     var out_file    = options.out;
     var paths       = options.paths;
     var meta_file   = options.meta;
-    var meta_dir    = options.meta_dir;
 
     var current_grunt_task = this.nameArgs;
     var current_grunt_opt = this.options();
     var user_config = grunt.config();
 
-    var meta_manager = new meta_factory( wd, meta_dir );
-    var optimizer = new optimizer_factory(meta_manager, config, grunt);
-    var router = new router_factory(user_config.routing);
 
     var done = this.async();
-    router.load(function(){
-      // check if a cache entry exists, if it is fresh, just serve it
-      if( meta_manager.is_fresh(meta_file) == false ){
+// get phantomizer main instance
+    var phantomizer = ph_libutil.get("main");
+    var meta_manager = phantomizer.get_meta_manager();
+    // check if a cache entry exists, if it is fresh, just serve it
+    if( meta_manager.is_fresh(meta_file) == false ){
+      // starts a new phantomizer webserver
+      phantomizer.create_webserver(options.paths,function(webserver){
 
-        // starts a new phantomizer webserver
-        var webserver = new webserver_factory(router,optimizer,meta_manager,grunt, options.paths);
         webserver.is_in_build_process(true);
         webserver.enable_query_logs(true);
         webserver.is_phantom(false);
@@ -67,21 +59,13 @@ module.exports = function(grunt) {
         var finish = function(res){
           if( res == true ){
             grunt.log.ok();
-            webserver.stop(function(){
-              done(true);
-            });
           }else{
             grunt.log.error(res);
-            webserver.stop(function(){
-              done(false);
-            });
           }
+          done(res == true);
         }
 
-        var deps = []
-        var route = router.match(in_request);
-        var file = file_utils.find_file(paths,route.template);
-        deps.push(file);
+        var deps = [];
 
         var target_url = "http://localhost:"+port+in_request;
         var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper.js';
@@ -104,32 +88,34 @@ module.exports = function(grunt) {
               deps.push(req_logs[trace[n]])
             }
           }
-          // add grunt file to dependencies so that file are rebuild when this file changes
-          deps.push(__filename)
-          if ( grunt.file.exists(process.cwd()+"/Gruntfile.js")) {
-            deps.push(process.cwd()+"/Gruntfile.js")
-          }
-          if ( grunt.file.exists(user_config.project_dir+"/../config.json")) {
-            deps.push( user_config.project_dir+"/../config.json")
-          }
           // create a cache entry, so that later we can regen or check freshness
-          var entry = meta_manager.create(deps)
-          entry.require_task(current_grunt_task, current_grunt_opt)
+          var entry = meta_manager.create(deps);
+          var route = phantomizer.get_router().match(in_request);
+          var file = file_utils.find_file(paths,route.template);
+          entry.append_dependency( file );
+          entry.append_dependency( process.cwd()+"/Gruntfile.js" );
+          entry.append_dependency( user_config.project_dir+"/../config.json" );
+          entry.append_dependency( __filename );
+          entry.require_task(current_grunt_task, current_grunt_opt);
           entry.save(meta_file, function(err){
-            if (err) finish(err)
-            else{
-              grunt.file.write(out_file, retour)
-              finish(true)
-            }
-          })
-        }).stdout.on('data', function (data) {
-            console.log(data.trim())
+            webserver.stop(function(){
+              if (err) finish(err)
+              else{
+                grunt.file.write(out_file, retour)
+                finish(true)
+              }
+            });
           });
-      }else{
-        grunt.log.ok("the build is fresh")
-        done(true);
-      }
-    });
+        })
+        .stdout.on('data', function (data) {
+          console.log(data.trim())
+        });
+      });
+    }else{
+      grunt.log.ok("the build is fresh")
+      done(true);
+    }
+
   });
 
 
@@ -137,12 +123,9 @@ module.exports = function(grunt) {
 
   grunt.registerMultiTask("phantomizer-strykejs-project-builder", "Builds html dependencies of a stryke file", function () {
 
-    var wd = process.cwd();
-
     var config = grunt.config();
     var options = this.options({
       run_dir:'',
-      meta_dir:'',
       port:'',
       ssl_port:'',
       urls_file:'',
@@ -153,7 +136,6 @@ module.exports = function(grunt) {
       log:false
     });
     var run_dir     = options.run_dir;
-    var meta_dir    = options.meta_dir;
     var port        = options.port;
     var ssl_port    = options.ssl_port;
     var urls_file   = options.urls_file;
@@ -163,18 +145,6 @@ module.exports = function(grunt) {
     var current_grunt_target = this.target;
     var user_config = grunt.config();
 
-    var meta_manager = new meta_factory( wd, meta_dir );
-    var optimizer = new optimizer_factory(meta_manager, config, grunt);
-    var router = new router_factory(config.routing);
-
-    // starts a new phantomizer webserver
-    var webserver = new webserver_factory(router,optimizer,meta_manager,grunt, options.paths);
-    webserver.is_in_build_process(true);
-    webserver.enable_query_logs(true);
-    webserver.is_phantom(false);
-    webserver.enable_dashboard(false);
-    webserver.enable_build(false);
-    webserver.enable_assets_inject(true);
 
     var done = this.async();
 
@@ -186,6 +156,7 @@ module.exports = function(grunt) {
       return;
     }
 
+
 // initialize a progress bar
     var bar = new ProgressBar(' done=[:current/:total] elapsed=[:elapseds] sprint=[:percent] eta=[:etas] [:bar]', {
       complete: '#'
@@ -193,36 +164,54 @@ module.exports = function(grunt) {
       , width: 80
       , total: raw_urls.length
     });
-
-
-    router.load(function(){
-
-      var finish = function(res){
-        if( res == true ){
-          grunt.log.ok();
-          webserver.stop(function(){
-            done(true);
-          });
-        }else{
-          grunt.log.error(res);
-          webserver.stop(function(){
-            done(false);
-          });
+    var parse_ticks = function(data){
+      var lines = data.trim().split("\n");
+      for( var n in lines ){
+        var l = lines[n];
+        var matches = l.match(/evaluate (done|failed)/);
+        if( matches && matches.length ){
+          for( var ii=1;ii<matches.length;ii++ ){
+            bar.tick();
+          }
         }
       }
+    };
 
-      grunt.log.ok("URL Count "+raw_urls.length);
-
-      var strykejs_urls_file = run_dir+"/tmp/strykejs-urls.json";
-      grunt.file.mkdir( path.dirname(strykejs_urls_file) )
-      for( var n in raw_urls ){
-        raw_urls[n].in_request = "http://localhost:"+port+raw_urls[n].in_request+"";
+    var finish = function(res){
+      if( res == true ){
+        grunt.log.ok();
+      }else{
+        grunt.log.error(res);
       }
-      grunt.file.write(strykejs_urls_file, JSON.stringify(raw_urls));
+      done(res == true);
+    };
 
+    grunt.log.ok("URL Count "+raw_urls.length);
+
+    var strykejs_urls_file = run_dir+"/tmp/strykejs-urls.json";
+    grunt.file.mkdir( path.dirname(strykejs_urls_file) )
+    for( var n in raw_urls ){
+      raw_urls[n].in_request = "http://localhost:"+port+raw_urls[n].in_request+"";
+    }
+    grunt.file.write(strykejs_urls_file, JSON.stringify(raw_urls));
+
+
+// get phantomizer main instance
+    var phantomizer = ph_libutil.get("main");
+    var meta_manager = phantomizer.get_meta_manager();
+    phantomizer.create_webserver(options.paths,function(webserver){
+
+      webserver.is_in_build_process(true);
+      webserver.enable_query_logs(true);
+      webserver.is_phantom(false);
+      webserver.enable_dashboard(false);
+      webserver.enable_build(false);
+      webserver.enable_assets_inject(true);
       webserver.start(options.port, options.ssl_port);
+
       var wrapper = __dirname+'/../ext/phantomjs-stryke-wrapper2.js';
       var phantomjsprocess = execute_phantomjs([wrapper, strykejs_urls_file, options.concurrent_request], function(err, stdout, stderr){
+
         var req_logs = webserver.get_query_logs();
         webserver.clear_query_logs();
 
@@ -240,30 +229,28 @@ module.exports = function(grunt) {
           // remove requirejs scripts, they are put in the head on runtime
           retour = remove_rjs_trace( retour );
           // get traced url call from runtime, remove it from output
-          var trace = extract_stryke_trace( retour )
-          retour = remove_stryke_trace( retour )
+          var trace = extract_stryke_trace( retour );
+          retour = remove_stryke_trace( retour );
+
+          // add grunt file to dependencies so that file are rebuild when this file changes
+          // create a cache entry, so that later we can regen or check freshness
+          var entry = meta_manager.create(deps);
+          entry.append_dependency( __filename );
+          entry.append_dependency( process.cwd()+"/Gruntfile.js" );
+          entry.append_dependency( user_config.project_dir+"/../config.json" );
+
           if( trace.length > 0 ){
             trace.unshift(in_request);
-            for(var n in trace){
-              deps.push(req_logs[trace[n]]);
+            for(var nn in trace){
+              entry.append_dependency( req_logs[trace[nn]] );
             }
           }
 
-          // add grunt file to dependencies so that file are rebuild when this file changes
-          deps.push(__filename)
-          if ( grunt.file.exists(process.cwd()+"/Gruntfile.js")) {
-            deps.push(process.cwd()+"/Gruntfile.js")
-          }
-          if ( grunt.file.exists(user_config.project_dir+"/../config.json")) {
-            deps.push( user_config.project_dir+"/../config.json")
-          }
-          var route = router.match(in_request);
+          var route = phantomizer.get_router().match(in_request);
           if( route != false ){
             var file = file_utils.find_file(paths,route.template);
-            deps.push(file);
+            entry.append_dependency( file );
           }
-          // create a cache entry, so that later we can regen or check freshness
-          var entry = meta_manager.create(deps);
 
           // save phantomizer-strykejs-project-builder task options
           var opt = grunt.config.get("phantomizer-strykejs-project-builder");
@@ -274,50 +261,33 @@ module.exports = function(grunt) {
 
           entry.save(meta_file, function(err){
             grunt.file.write(out_file, retour);
-          })
+            if( n == raw_urls.length-1){
+              webserver.stop(function(){
+                finish(true);
+              });
+            }
+          });
         }
-        finish(true)
       });
+
       phantomjsprocess.stdout
         .on('data', function (data) {
           grunt.verbose.writeln(data.trim());
         })
         // update progress bar
-        .on('data', function (data) {
-          var lines = data.trim().split("\n");
-          for( var n in lines ){
-            var l = lines[n];
-            var matches = l.match(/evaluate (done|failed)/);
-            if( matches && matches.length ){
-              for( var ii=1;ii<matches.length;ii++ ){
-                bar.tick();
-              }
-            }
-          }
-        })
-      ;
+        .on('data', parse_ticks);
+
       phantomjsprocess.stderr
         .on('data', function (data) {
           grunt.log.write("\n");
           grunt.log.error(""+data.trim());
         })
         // update progress bar
-        .on('data', function (data) {
-          var lines = data.trim().split("\n");
-          for( var n in lines ){
-            var l = lines[n];
-            var matches = l.match(/evaluate (done|failed)/);
-            if( matches && matches.length ){
-              for( var ii=1;ii<matches.length;ii++ ){
-                bar.tick();
-              }
-            }
-          }
-        })
-      ;
-      ;
+        .on('data', parse_ticks);
 
     });
+
+
   });
 
 
