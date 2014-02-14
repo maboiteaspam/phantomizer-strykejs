@@ -23,12 +23,10 @@ module.exports = function(grunt) {
     },
     release: {
       options: {
-        bump: true,
-        add: false,
-        commit: false,
-        npm: false,
-        npmtag: true,
-        tagName: '<%= version %>',
+        npm: false, //default: true
+        // true will apply the version number as the tag
+        npmtag: true, //default: no tag
+        tagName: '<%= version %>', //default: '<%= version %>'
         github: {
           repo: 'maboiteaspam/phantomizer-strykejs', //put your user/repo here
           usernameVar: 'GITHUB_USERNAME', //ENVIRONMENT VARIABLE that contains Github username
