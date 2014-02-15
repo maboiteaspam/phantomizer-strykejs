@@ -48,7 +48,7 @@ module.exports = function(grunt) {
   // to generate and publish the docco style documentation
   // execute this
   // grunt
-  grunt.registerTask('default', ['docco','gh-pages', 'cleanup-grunt-temp']);
+  grunt.registerTask('default', ['release:patch','docco','gh-pages', 'cleanup-grunt-temp']);
 
   // to release the project in a new version
   // use one of those commands
