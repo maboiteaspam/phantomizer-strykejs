@@ -36,7 +36,6 @@ module.exports = function(grunt) {
 
     var current_grunt_task = this.nameArgs;
     var current_grunt_opt = this.options();
-    var user_config = grunt.config();
 
 
     var done = this.async();
@@ -94,8 +93,6 @@ module.exports = function(grunt) {
           var route = phantomizer.get_router().match(in_request);
           var file = file_utils.find_file(paths,route.template);
           entry.append_dependency( file );
-          entry.append_dependency( process.cwd()+"/Gruntfile.js" );
-          entry.append_dependency( user_config.project_dir+"/../config.json" );
           entry.append_dependency( __filename );
           entry.require_task(current_grunt_task, current_grunt_opt);
           entry.save(meta_file, function(err){
@@ -124,7 +121,6 @@ module.exports = function(grunt) {
 
   grunt.registerMultiTask("phantomizer-strykejs-project-builder", "Builds html dependencies of a stryke file", function () {
 
-    var config = grunt.config();
     var options = this.options({
       run_dir:'',
       port:'',
@@ -144,8 +140,6 @@ module.exports = function(grunt) {
     var paths = options.paths;
 
     var current_grunt_target = this.target;
-    var user_config = grunt.config();
-
 
     var done = this.async();
 
@@ -238,8 +232,6 @@ module.exports = function(grunt) {
           // create a cache entry, so that later we can regen or check freshness
           var entry = meta_manager.create(deps);
           entry.append_dependency( __filename );
-          entry.append_dependency( process.cwd()+"/Gruntfile.js" );
-          entry.append_dependency( user_config.project_dir+"/../config.json" );
 
           if( trace.length > 0 ){
             trace.unshift(in_request);
