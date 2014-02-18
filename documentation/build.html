@@ -61,7 +61,6 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
 
     <span class="hljs-keyword">var</span> current_grunt_task = <span class="hljs-keyword">this</span>.nameArgs;
     <span class="hljs-keyword">var</span> current_grunt_opt = <span class="hljs-keyword">this</span>.options();
-    <span class="hljs-keyword">var</span> user_config = grunt.config();
 
 
     <span class="hljs-keyword">var</span> done = <span class="hljs-keyword">this</span>.async();</pre></div>
@@ -71,7 +70,8 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
         <p>get phantomizer main instance</p>
 
         
-          <div class='highlight'><pre>    <span class="hljs-keyword">var</span> phantomizer = ph_libutil.get(<span class="hljs-string">"main"</span>);
+          <div class='highlight'><pre>    <span class="hljs-keyword">var</span> Phantomizer = ph_libutil.Phantomizer;
+    <span class="hljs-keyword">var</span> phantomizer = <span class="hljs-keyword">new</span> Phantomizer(process.cwd(),grunt);
     <span class="hljs-keyword">var</span> meta_manager = phantomizer.get_meta_manager();</pre></div>
         
       
@@ -153,8 +153,6 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
           <span class="hljs-keyword">var</span> route = phantomizer.get_router().match(in_request);
           <span class="hljs-keyword">var</span> file = file_utils.find_file(paths,route.template);
           entry.append_dependency( file );
-          entry.append_dependency( process.cwd()+<span class="hljs-string">"/Gruntfile.js"</span> );
-          entry.append_dependency( user_config.project_dir+<span class="hljs-string">"/../config.json"</span> );
           entry.append_dependency( __filename );
           entry.require_task(current_grunt_task, current_grunt_opt);
           entry.save(meta_file, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(err)</span>{</span>
@@ -183,7 +181,6 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
 
   grunt.registerMultiTask(<span class="hljs-string">"phantomizer-strykejs-project-builder"</span>, <span class="hljs-string">"Builds html dependencies of a stryke file"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
 
-    <span class="hljs-keyword">var</span> config = grunt.config();
     <span class="hljs-keyword">var</span> options = <span class="hljs-keyword">this</span>.options({
       run_dir:<span class="hljs-string">''</span>,
       port:<span class="hljs-string">''</span>,
@@ -203,8 +200,6 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
     <span class="hljs-keyword">var</span> paths = options.paths;
 
     <span class="hljs-keyword">var</span> current_grunt_target = <span class="hljs-keyword">this</span>.target;
-    <span class="hljs-keyword">var</span> user_config = grunt.config();
-
 
     <span class="hljs-keyword">var</span> done = <span class="hljs-keyword">this</span>.async();</pre></div>
         
@@ -267,7 +262,8 @@ module.exports = <span class="hljs-function"><span class="hljs-keyword">function
         <p>get phantomizer main instance</p>
 
         
-          <div class='highlight'><pre>    <span class="hljs-keyword">var</span> phantomizer = ph_libutil.get(<span class="hljs-string">"main"</span>);
+          <div class='highlight'><pre>    <span class="hljs-keyword">var</span> Phantomizer = ph_libutil.Phantomizer;
+    <span class="hljs-keyword">var</span> phantomizer = <span class="hljs-keyword">new</span> Phantomizer(process.cwd(),grunt);
     <span class="hljs-keyword">var</span> meta_manager = phantomizer.get_meta_manager();
     phantomizer.create_webserver(options.paths,<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(webserver)</span>{</span>
 
@@ -330,8 +326,6 @@ create a cache entry, so that later we can regen or check freshness</p>
         
           <div class='highlight'><pre>          <span class="hljs-keyword">var</span> entry = meta_manager.create(deps);
           entry.append_dependency( __filename );
-          entry.append_dependency( process.cwd()+<span class="hljs-string">"/Gruntfile.js"</span> );
-          entry.append_dependency( user_config.project_dir+<span class="hljs-string">"/../config.json"</span> );
 
           <span class="hljs-keyword">if</span>( trace.length &gt; <span class="hljs-number">0</span> ){
             trace.unshift(in_request);
